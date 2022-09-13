@@ -1,0 +1,38 @@
+[tool.poetry]
+name = "kolla"
+version = "0.5.2"
+description = "Reactive user interfaces"
+authors = ["Berend Klein Haneveld <berendkleinhaneveld@gmail.com>", "Korijn van Golen <korijn@gmail.com>"]
+license = "MIT"
+homepage = "https://github.com/fork-tongue/kolla"
+readme = "README.md"
+
+[tool.poetry.extras]
+pygfx = ["pygfx"]
+pyside = ["pyside6_essentials"]
+
+[tool.poetry.dependencies]
+python = ">=3.9"
+observ = ">=0.9.5"
+pygfx = { version = ">=0.1.9", optional = true }
+pyside6_essentials = { version = "^6.3", python = "<3.11", optional = true }
+
+# TODO: add entry_point to be able to run kolla as module and render .kolla files directly
+# python -m kolla path/to/example.kolla
+
+[tool.poetry.group.dev.dependencies]
+black = "*"
+flake8 = "*"
+flake8-black = "*"
+flake8-import-order = "*"
+flake8-print = "*"
+pre-commit = "*"
+pytest = "*"
+pytest-cov = "*"
+pytest-qt = "*"
+pytest-xvfb = "*"
+rich = {version = "^12.5.1", python = "<4.0"}
+
+[build-system]
+requires = ["poetry>=1.0.0"]
+build-backend = "poetry.masonry.api"
