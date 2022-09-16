@@ -1,5 +1,6 @@
 import ast
 from collections import defaultdict
+import logging
 
 # import inspect
 from html.parser import HTMLParser
@@ -9,6 +10,9 @@ import sys
 import textwrap
 
 from kolla import Component
+
+
+logger = logging.getLogger(__name__)
 
 
 # Adjust this setting to disable some runtime checks
@@ -130,7 +134,10 @@ def construct_ast(path, template=None):
     render_tree = create_kolla_render_function(parser.root, names=imported_names.names)
     ast.fix_missing_locations(render_tree)
 
-    _print_ast_tree_as_code(render_tree)
+    try:
+        _print_ast_tree_as_code(render_tree)
+    except Exception as e:
+        logger.warning("Could not unparse AST", exc_info=e)
 
     # Put location of render function outside of the script tag
     # This makes sure that the render function can be excluded
@@ -163,22 +170,26 @@ def get_script_ast(parser, path):
     return script_tree
 
 
-# def bla_die_bla(node, names):
-
-
-def ast_create_element(el, tag, parent=None):
+def ast_create_fragment(el, tag, parent=None):
     """
     Return AST for creating an element with `tag` and
     assigning it to variable name: `el`
     """
+    keywords = [
+        ast.keyword(arg="tag", value=ast.Constant(value=tag)),
+    ]
+    if parent is not None:
+        keywords.append(
+            ast.keyword(arg="parent", value=ast.Name(id=parent, ctx=ast.Load()))
+        )
     return ast.Assign(
         targets=[ast.Name(id=el, ctx=ast.Store())],
         value=ast.Call(
-            func=ast.Name(id="Element", ctx=ast.Load()),
-            args=[ast.Constant(value=tag)],
-            keywords=[]
-            if parent is None
-            else [ast.keyword(arg="parent", value=ast.Name(id=parent, ctx=ast.Load()))],
+            func=ast.Name(id="Fragment", ctx=ast.Load()),
+            args=[
+                ast.Name(id="renderer", ctx=ast.Load()),
+            ],
+            keywords=keywords,
         ),
     )
 
@@ -195,34 +206,29 @@ def ast_set_attribute(el, key, value):
             keywords=[],
         )
     )
-    # return ast.Assign(
-    #     targets=[
-
-    #             value=ast.Attribute(
-    #                 value=ast.Name(id=el, ctx=ast.Load()),
-    #                 attr="_attributes",
-    #                 ctx=ast.Load(),
-    #             ),
-    #             slice=ast.Constant(value=key),
-    #             ctx=ast.Store(),
-    #     ],
-    #     value=ast.Constant(value=value),
-    # )
 
 
-def ast_set_bind_attribute(el, key, value):
+def ast_set_dynamic_attribute(el, key, value):
     _, key = key.split(":")
     source = ast.parse(
         textwrap.dedent(
             f"""
-        {el}._watchers["bind:{key}"] = watch(
-            lambda: {value},
-            lambda new: renderer.set_attribute({el}._instance, "{key}", new),
-        )
-        """
-        )
+            {el}.set_dynamic_attribute("{key}", lambda: {value})
+            #{el}._watchers["bind:{key}"] = watch(
+            #    lambda: {value},
+            #    lambda new: renderer.set_attribute({el}._instance, "{key}", new),
+            #)
+            """
+        ),
+        mode="exec",
     )
-    return RewriteName(skip={"renderer", "new", el, "watch", key}).visit(source).body
+    lambda_names = LambdaNamesCollector()
+    lambda_names.visit(source)
+    return (
+        RewriteName(skip={"renderer", "new", el, "watch"} | lambda_names.names)
+        .visit(source)
+        .body
+    )
 
 
 def ast_add_event_listener(el, key, value):
@@ -285,8 +291,8 @@ def create_kolla_render_function(node, names):
     )
     body.append(
         ast.ImportFrom(
-            module="kolla.types",
-            names=[ast.alias(name="Element")],
+            module="kolla.fragment",
+            names=[ast.alias(name="Fragment")],
             level=0,
         )
     )
@@ -304,7 +310,7 @@ def create_kolla_render_function(node, names):
         # el = f"el{counter}"
         counter[child.tag] += 1
         # Create element
-        body.append(ast_create_element(el, child.tag))
+        body.append(ast_create_fragment(el, child.tag))
         # Set static attributes
         for key, value in child.attrs.items():
             if not is_directive(key):
@@ -314,7 +320,7 @@ def create_kolla_render_function(node, names):
                     # TODO: bind complete dicts
                     pass
                 else:
-                    body.extend(ast_set_bind_attribute(el, key, value))
+                    body.extend(ast_set_dynamic_attribute(el, key, value))
             elif key.startswith((DIRECTIVE_ON, "@")):
                 body.append(ast_add_event_listener(el, key, value))
             # TODO: how to support root-level v-ifs??
@@ -332,7 +338,7 @@ def create_kolla_render_function(node, names):
                 # el = f"el{counter}"
                 counter[child.tag] += 1
                 # Create element
-                result.append(ast_create_element(el, child.tag, parent=target))
+                result.append(ast_create_fragment(el, child.tag, parent=target))
                 # Set static attributes and dynamic (bind) attributes
                 for key, value in child.attrs.items():
                     if not is_directive(key):
@@ -342,7 +348,7 @@ def create_kolla_render_function(node, names):
                             # TODO: bind complete dicts
                             pass
                         else:
-                            result.extend(ast_set_bind_attribute(el, key, value))
+                            result.extend(ast_set_dynamic_attribute(el, key, value))
                     elif key.startswith((DIRECTIVE_ON, "@")):
                         result.append(ast_add_event_listener(el, key, value))
                     elif key.startswith(DIRECTIVE_IF):
@@ -517,6 +523,7 @@ class KollaParser(HTMLParser):
         # Cast attributes that have no value to boolean (True)
         # so that they function like flags
         for key, value in node.attrs.items():
+            # TODO: check if the value should actually be an integer
             if value is None:
                 node.attrs[key] = True
 

@@ -1,9 +1,13 @@
+from typing import Any
+
 from observ import scheduler
 
+from kolla.component import Component
 from kolla.renderers import Renderer
 from kolla.types import (
     EventLoopType,
 )
+from kolla.fragment import Fragment
 
 
 class Kolla:
@@ -34,9 +38,15 @@ class Kolla:
         else:
             scheduler.register_request_flush(scheduler.flush)
 
-    def render(self, component, state, container):
-        instance = component(state)
+    def render(self, component: Component, target: Any, state=None):
+        """
+        target: DOM element/instance to render into.
+        """
+        root = Fragment(renderer=self.renderer)
+        root.elements.append(target)
+
+        instance = component(state or {})
 
         self.elements = instance.render(self.renderer)
         for el in self.elements:
-            el.construct(self.renderer, container)
+            el.mount(target)
