@@ -78,7 +78,7 @@ class Component:
         pass
 
     @abstractmethod
-    def render():  # pragma: no cover
+    def render(self, renderer):  # pragma: no cover
         pass
 
     def emit(self, event, *args, **kwargs):
