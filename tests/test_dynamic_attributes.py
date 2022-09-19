@@ -1,3 +1,5 @@
+from observ import reactive
+
 from kolla import Kolla, EventLoopType
 from kolla.renderers import DictRenderer
 
@@ -136,3 +138,35 @@ def test_dynamic_attribute_props(parse_source):
 
     app = container["children"][0]
     assert app["attrs"]["foo"] == "baz"
+
+
+def test_dynamic_attribute_props_change(parse_source):
+    App, _ = parse_source(
+        """
+        <app :foo="bar" />
+
+        <script>
+        import kolla
+
+        bar = "baz"
+
+        class App(kolla.Component):
+            pass
+        </script>
+        """
+    )
+
+    state = reactive({"bar": "baz"})
+    container = {"type": "root"}
+    gui = Kolla(
+        renderer=DictRenderer(),
+        event_loop_type=EventLoopType.SYNC,
+    )
+    gui.render(App, container, state=state)
+
+    app = container["children"][0]
+    assert app["attrs"]["foo"] == "baz"
+
+    state["bar"] = "bam"
+
+    assert app["attrs"]["foo"] == "bam"
