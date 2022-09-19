@@ -1,4 +1,5 @@
-from typing import Any, Callable, TypeVar
+from __future__ import annotations
+from typing import Any, Callable
 from weakref import ref
 
 from observ.watcher import watch, Watcher  # type: ignore
@@ -6,7 +7,7 @@ from observ.watcher import watch, Watcher  # type: ignore
 from kolla.renderers import Renderer
 
 
-Frag = TypeVar("Fragment")
+# "Fragment" = TypeVar(""Fragment"")
 
 
 class Fragment:
@@ -15,39 +16,33 @@ class Fragment:
         renderer: Renderer,
         # tag = None for 'transient' Fragments, like a virtual root
         tag: None | str | Callable | list[str | Callable] = None,
-        parent: Frag | None = None,
+        parent: "Fragment" | None = None,
     ):
         super().__init__()
 
         self.renderer = renderer
         self.tags: list[str | Callable] = []
         self.elements: list[Any] = []
-        self._parent: ref[Frag] | None = parent
-        self._attributes = {}
+        self.children: list["Fragment"] = []
+
+        self._parent: ref["Fragment"] | None = ref(parent) if parent else None
+        self._attributes: dict[str, str] = {}
+        self._events: dict[str, Callable] = {}
 
         if isinstance(tag, str):
             self.tags = [tag]
 
-        self.children: list[Frag] = []
         self._watchers: dict[str, Watcher] = {}
 
         if parent:
             parent.children.append(self)
-        # create_instane
-        # static_instance: Any  # (no expression)
-        # dynamic_instance: Any  # (depends on expression)
-        # - works for 'select' block
-        # - works for dynamic type block
 
     @property
-    def parent(self) -> Frag | None:
-        if self._parent:
-            return self._parent()
-        return None
-        # return self._parent and self._parent()
+    def parent(self) -> "Fragment" | None:
+        return self._parent() if self._parent else None
 
     @parent.setter
-    def parent(self, parent: Frag):
+    def parent(self, parent: "Fragment"):
         self._parent = ref(parent)
 
     @property
@@ -57,12 +52,15 @@ class Fragment:
     def set_attribute(self, attr, value):
         self._attributes[attr] = value
 
-    def set_dynamic_attribute(self, attr, expression):
+    def set_bind(self, attr, expression):
         self._watchers[f"bind:{attr}"] = watch(
             expression,
             lambda new: self.renderer.set_attribute(self.first, attr, new),
             immediate=False,
         )
+
+    def add_event(self, event, handler):
+        self._events[event] = handler
 
     def create(self):
         """
@@ -70,14 +68,21 @@ class Fragment:
         an expression
         """
         for tag in self.tags:
+            # Create the element
             element = self.renderer.create_element(tag)
             self.elements.append(element)
+            # Set all static attributes
             for attr, value in self._attributes.items():
                 self.renderer.set_attribute(element, attr, value)
-
+            # Add all event handlers
+            # TODO: check what happens within v-for constructs?
+            for event, handler in self._events.items():
+                self.renderer.add_event_listener(element, event, handler)
+            # Set all dynamic aatributes
             for key, watcher in self._watchers.items():
                 if key.startswith("bind:"):
-                    watcher.update()
+                    _, key = key.split(":")
+                    self.renderer.set_attribute(element, key, watcher.value)
         # IDEA/TODO: for v-for, don't create instances direct, but
         # instead, create child fragments first, then call
         # create on those instead. Might involve some reparenting
@@ -96,26 +101,9 @@ class Fragment:
     def patch(self):
         pass
 
-    def anchor(self, other: Frag) -> Frag:
+    def anchor(self, other: "Fragment") -> "Fragment":
         """Returns the fragment that serves as anchor for the
         other fragment. Anchor is the first mounted item *after* the
         current item.
         """
         pass
-
-
-class StaticFragment:
-    tag: str
-
-
-class SelectFragment:
-    if_statements: list
-    else_statement: list | None
-
-
-class DynamicFragment:
-    pass
-
-
-class EachFragment:
-    pass

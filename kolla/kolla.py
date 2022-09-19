@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from typing import Any
 
 from observ import scheduler
@@ -38,7 +39,7 @@ class Kolla:
         else:
             scheduler.register_request_flush(scheduler.flush)
 
-    def render(self, component: Component, target: Any, state=None):
+    def render(self, component: Callable[[dict], Component], target: Any, state=None):
         """
         target: DOM element/instance to render into.
         """
