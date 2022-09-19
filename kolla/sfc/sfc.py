@@ -208,26 +208,20 @@ def ast_set_attribute(el, key, value):
     )
 
 
-def ast_set_dynamic_attribute(el, key, value):
+def ast_add_dynamic_attribute(el, key, value):
     _, key = key.split(":")
     source = ast.parse(
-        textwrap.dedent(
-            f"""
-            {el}.set_dynamic_attribute("{key}", lambda: {value})
-            #{el}._watchers["bind:{key}"] = watch(
-            #    lambda: {value},
-            #    lambda new: renderer.set_attribute({el}._instance, "{key}", new),
-            #)
-            """
-        ),
-        mode="exec",
+        textwrap.dedent(f'{el}.set_bind("{key}", lambda: {value})'),
+        mode="eval",
     )
     lambda_names = LambdaNamesCollector()
     lambda_names.visit(source)
-    return (
-        RewriteName(skip={"renderer", "new", el, "watch"} | lambda_names.names)
-        .visit(source)
-        .body
+    return ast.Expr(
+        value=(
+            RewriteName(skip={"renderer", "new", el, "watch"} | lambda_names.names)
+            .visit(source)
+            .body
+        )
     )
 
 
@@ -235,12 +229,14 @@ def ast_add_event_listener(el, key, value):
     split_char = "@" if key.startswith("@") else ":"
     _, key = key.split(split_char)
 
-    expression_ast = ast.parse(value, mode="eval")
+    expression_ast = ast.parse(
+        f"lambda *args, **kwargs: {value}(*args, **kwargs)", mode="eval"
+    )
     # v-on directives allow for lambdas which define arguments
     # which need to be skipped by the RewriteName visitor
     lambda_names = LambdaNamesCollector()
     lambda_names.visit(expression_ast)
-    RewriteName(skip=set() | lambda_names.names).visit(expression_ast)
+    RewriteName(skip={"args", "kwargs"} | lambda_names.names).visit(expression_ast)
 
     return ast.Expr(
         value=ast.Call(
@@ -281,7 +277,7 @@ def ast_add_condictional(parent, child, condition):
 
 
 def create_kolla_render_function(node, names):
-    body = []
+    body: list[ast.Assign | ast.Expr | ast.Return] = []
     body.append(
         ast.ImportFrom(
             module="observ",
@@ -298,7 +294,7 @@ def create_kolla_render_function(node, names):
     )
     body.append(
         ast.Assign(
-            targets=[ast.Name(id="elements", ctx=ast.Store())],
+            targets=[ast.Name(id="fragments", ctx=ast.Store())],
             value=ast.List(elts=[], ctx=ast.Load()),
         )
     )
@@ -320,7 +316,7 @@ def create_kolla_render_function(node, names):
                     # TODO: bind complete dicts
                     pass
                 else:
-                    body.extend(ast_set_dynamic_attribute(el, key, value))
+                    body.append(ast_add_dynamic_attribute(el, key, value))
             elif key.startswith((DIRECTIVE_ON, "@")):
                 body.append(ast_add_event_listener(el, key, value))
             # TODO: how to support root-level v-ifs??
@@ -348,7 +344,7 @@ def create_kolla_render_function(node, names):
                             # TODO: bind complete dicts
                             pass
                         else:
-                            result.extend(ast_set_dynamic_attribute(el, key, value))
+                            result.append(ast_add_dynamic_attribute(el, key, value))
                     elif key.startswith((DIRECTIVE_ON, "@")):
                         result.append(ast_add_event_listener(el, key, value))
                     elif key.startswith(DIRECTIVE_IF):
@@ -369,7 +365,7 @@ def create_kolla_render_function(node, names):
             ast.Expr(
                 value=ast.Call(
                     func=ast.Attribute(
-                        value=ast.Name(id="elements", ctx=ast.Load()),
+                        value=ast.Name(id="fragments", ctx=ast.Load()),
                         attr="append",
                         ctx=ast.Load(),
                     ),
@@ -379,8 +375,7 @@ def create_kolla_render_function(node, names):
             ),
         )
 
-    body.append(ast.Return(value=ast.Name(id="elements", ctx=ast.Load())))
-
+    body.append(ast.Return(value=ast.Name(id="fragments", ctx=ast.Load())))
     return ast.FunctionDef(
         name="render",
         args=ast.arguments(
@@ -562,5 +557,7 @@ def _print_ast_tree_as_code(tree):  # pragma: no cover
         console = Console()
         syntax = Syntax(result, "python")
         console.print(syntax)  # noqa: T201
+    except black.parsing.InvalidInput:
+        print(plain_result)
     except TypeError:
         pass
