@@ -5,10 +5,7 @@ from observ import scheduler
 
 from kolla.component import Component
 from kolla.renderers import Renderer
-from kolla.types import (
-    EventLoopType,
-)
-from kolla.fragment import Fragment
+from kolla.types import EventLoopType
 
 
 class Kolla:
@@ -43,11 +40,7 @@ class Kolla:
         """
         target: DOM element/instance to render into.
         """
-        root = Fragment(renderer=self.renderer)
-        root.elements.append(target)
-
         instance = component(state or {})
 
-        self.elements = instance.render(self.renderer)
-        for el in self.elements:
-            el.mount(target)
+        self.component = instance.render(self.renderer)
+        self.component.mount(target)

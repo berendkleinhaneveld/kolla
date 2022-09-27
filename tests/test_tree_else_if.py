@@ -47,7 +47,6 @@ def test_directive_else_if_root(parse_source):
     state["bar"] = False
 
     assert "children" not in container
-    assert len(container["children"]) == 0
 
     state["bar"] = True
 

@@ -1,4 +1,5 @@
 from __future__ import annotations
+from enum import Enum
 from typing import Any, Callable
 from weakref import ref
 
@@ -7,7 +8,11 @@ from observ.watcher import watch, Watcher  # type: ignore
 from kolla.renderers import Renderer
 
 
-# "Fragment" = TypeVar(""Fragment"")
+class FragmentType(Enum):
+    NORMAL = 0
+    CONTROL_FLOW = 1
+    LIST = 2
+    COMPONENT = 3
 
 
 class Fragment:
@@ -17,6 +22,7 @@ class Fragment:
         # tag = None for 'transient' Fragments, like a virtual root
         tag: None | str | Callable | list[str | Callable] = None,
         parent: "Fragment" | None = None,
+        type: FragmentType = FragmentType.NORMAL,
     ):
         super().__init__()
 
@@ -24,6 +30,7 @@ class Fragment:
         self.tags: list[str | Callable] = []
         self.elements: list[Any] = []
         self.children: list["Fragment"] = []
+        self.target = None
 
         self._parent: ref["Fragment"] | None = ref(parent) if parent else None
         self._attributes: dict[str, str] = {}
@@ -36,6 +43,9 @@ class Fragment:
 
         if parent:
             parent.children.append(self)
+
+    def __repr__(self):
+        return f"<Fragment({self.tags[0]})>"
 
     @property
     def parent(self) -> "Fragment" | None:
@@ -58,6 +68,9 @@ class Fragment:
             lambda new: self.renderer.set_attribute(self.first, attr, new),
             immediate=False,
         )
+
+    def set_condition(self, expression):
+        self.condition = expression
 
     def add_event(self, event, handler):
         self._events[event] = handler
@@ -89,14 +102,17 @@ class Fragment:
         # of the current child fragments???
 
     def mount(self, target: Any, anchor: Any | None = None):
-        self.create()
+        self.target = target
+        if not self.elements:
+            self.create()
         for element in self.elements:
             self.renderer.insert(element, parent=target, anchor=anchor)
             for child in self.children:
                 child.mount(element)
 
     def unmount(self):
-        pass
+        for element in self.elements:
+            self.renderer.remove(element, self.target)
 
     def patch(self):
         pass
@@ -107,3 +123,48 @@ class Fragment:
         current item.
         """
         pass
+
+
+class ControlFlowFragment(Fragment):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **{**kwargs, "type": FragmentType.CONTROL_FLOW})
+
+    def mount(self, target: Any, anchor: Any | None = None):
+        self.target = target
+
+        def active_child():
+            for child in self.children:
+                if hasattr(child, "condition"):
+                    if child.condition():
+                        return child
+                else:
+                    return child
+
+        def update_fragment(new, old):
+            if old:
+                old.unmount()
+            if new:
+                new.mount(self.target)
+
+        self._watchers["control_flow"] = watch(
+            active_child,
+            update_fragment,
+            deep=True,
+            immediate=True,
+        )
+
+
+class ListFragment(Fragment):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **{**kwargs, "type": FragmentType.LIST})
+
+
+class ComponentFragment(Fragment):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **{**kwargs, "type": FragmentType.COMPONENT})
+
+    def mount(self, target: Any, anchor: Any | None = None):
+        self.target = target
+        # Virtual node, so mount children into target
+        for child in self.children:
+            child.mount(target)

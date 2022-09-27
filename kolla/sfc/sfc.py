@@ -269,10 +269,45 @@ def ast_add_condictional(parent, child, condition):
                 ast.Constant(value=child),
                 ast.Name(id=child, ctx=ast.Load()),
                 condition_ast.body,
-                ast.Name(id="renderer", ctx=ast.Load()),
+                # ast.Name(id="renderer", ctx=ast.Load()),
             ],
             keywords=[],
         )
+    )
+
+
+def ast_add_condition(child, condition):
+    condition_ast = ast.parse(f"lambda: bool({condition})", mode="eval")
+    RewriteName(skip=set()).visit(condition_ast)
+
+    return ast.Expr(
+        value=ast.Call(
+            func=ast.Attribute(
+                value=ast.Name(id=child, ctx=ast.Load()),
+                attr="set_condition",
+                ctx=ast.Load(),
+            ),
+            args=[condition_ast.body],
+            keywords=[],
+        )
+    )
+
+
+def ast_create_control_flow(name, parent):
+    return ast.Assign(
+        targets=[ast.Name(id=name, ctx=ast.Store())],
+        value=ast.Call(
+            func=ast.Name(id="ControlFlowFragment", ctx=ast.Load()),
+            args=[
+                ast.Name(id="renderer", ctx=ast.Load()),
+            ],
+            keywords=[
+                ast.keyword(
+                    arg="parent",
+                    value=ast.Name(id=parent, ctx=ast.Load()),
+                )
+            ],
+        ),
     )
 
 
@@ -288,94 +323,142 @@ def create_kolla_render_function(node, names):
     body.append(
         ast.ImportFrom(
             module="kolla.fragment",
-            names=[ast.alias(name="Fragment")],
+            names=[
+                ast.alias(name="ControlFlowFragment"),
+                ast.alias(name="ComponentFragment"),
+                ast.alias(name="Fragment"),
+            ],
             level=0,
         )
     )
+
     body.append(
         ast.Assign(
-            targets=[ast.Name(id="fragments", ctx=ast.Store())],
-            value=ast.List(elts=[], ctx=ast.Load()),
+            targets=[ast.Name(id="component", ctx=ast.Store())],
+            value=ast.Call(
+                func=ast.Name(id="ComponentFragment", ctx=ast.Load()),
+                args=[
+                    ast.Name(id="renderer", ctx=ast.Load()),
+                ],
+                keywords=[],
+            ),
         )
     )
 
     counter = defaultdict(int)
-    for child in node.children:
-        # Create element name
-        el = f"{child.tag}{counter[child.tag]}"
-        # el = f"el{counter}"
-        counter[child.tag] += 1
-        # Create element
-        body.append(ast_create_fragment(el, child.tag))
-        # Set static attributes
-        for key, value in child.attrs.items():
-            if not is_directive(key):
-                body.append(ast_set_attribute(el, key, value))
-            elif key.startswith((DIRECTIVE_BIND, ":")):
-                if key == DIRECTIVE_BIND:
-                    # TODO: bind complete dicts
+    # for child in node.children:
+    #     # Create element name
+    #     el = f"{child.tag}{counter[child.tag]}"
+    #     # el = f"el{counter}"
+    #     counter[child.tag] += 1
+    #     # Create element
+    #     body.append(ast_create_fragment(el, child.tag))
+    #     # Set static attributes
+    #     for key, value in child.attrs.items():
+    #         if not is_directive(key):
+    #             body.append(ast_set_attribute(el, key, value))
+    #         elif key.startswith((DIRECTIVE_BIND, ":")):
+    #             if key == DIRECTIVE_BIND:
+    #                 # TODO: bind complete dicts
+    #                 pass
+    #             else:
+    #                 body.append(ast_add_dynamic_attribute(el, key, value))
+    #         elif key.startswith((DIRECTIVE_ON, "@")):
+    #             body.append(ast_add_event_listener(el, key, value))
+    # TODO: how to support root-level v-ifs??
+    # Maybe just not support it for now?
+    # elif key.startswith(DIRECTIVE_IF):
+    #     body.append(ast_add_condictional(target, el, value))
+
+    def create_select_fragment(nodes, target):
+        print("CREATE CONTROL FLOW")
+        # Create ControlFlowFragment
+        # Add
+        pass
+
+    # Create and add children
+    def create_children(nodes: list[Node], target: str):
+        result = []
+        # control_flow = []
+        control_flow_parent = None
+        for child in nodes:
+            nonlocal counter
+            # Create element name
+            el = f"{child.tag}{counter[child.tag]}"
+            counter[child.tag] += 1
+            parent = target
+            if [
+                True
+                for key in child.attrs
+                if key.startswith((DIRECTIVE_IF, DIRECTIVE_ELSE, DIRECTIVE_ELSE_IF))
+            ]:
+                parent = None
+
+            # Set static attributes and dynamic (bind) attributes
+            attributes = []
+            events = []
+            binds = []
+            condition = None
+
+            if control_flow_directive := child.control_flow():
+                #     parent = None
+                if control_flow_directive == DIRECTIVE_IF:
+                    control_flow_parent = f"control_flow{counter['control_flow']}"
+                    counter["control_flow"] += 1
+            #     control_flow.append((control_flow_directive, child))
+            else:
+                # Reset the control flow parent
+                control_flow_parent = None
+            # elif control_flow:
+            #     create_select_fragment(control_flow, target)
+            #     control_flow = []
+
+            for key, value in child.attrs.items():
+                if not is_directive(key):
+                    attributes.append(ast_set_attribute(el, key, value))
+                elif key.startswith((DIRECTIVE_BIND, ":")):
+                    if key == DIRECTIVE_BIND:
+                        # TODO: bind complete dicts
+                        pass
+                    else:
+                        binds.append(ast_add_dynamic_attribute(el, key, value))
+                elif key.startswith((DIRECTIVE_ON, "@")):
+                    events.append(ast_add_event_listener(el, key, value))
+                elif key == DIRECTIVE_IF:
+                    result.append(ast_create_control_flow(control_flow_parent, target))
+                    condition = ast_add_condition(el, value)
+                elif key == DIRECTIVE_ELSE_IF:
+                    condition = ast_add_condition(el, value)
+                elif key == DIRECTIVE_ELSE:
                     pass
-                else:
-                    body.append(ast_add_dynamic_attribute(el, key, value))
-            elif key.startswith((DIRECTIVE_ON, "@")):
-                body.append(ast_add_event_listener(el, key, value))
-            # TODO: how to support root-level v-ifs??
-            # Maybe just not support it for now?
-            # elif key.startswith(DIRECTIVE_IF):
-            #     body.append(ast_add_condictional(target, el, value))
 
-        # Create and add children
-        def create_children(nodes, target):
-            result = []
-            for child in nodes:
-                nonlocal counter
-                # Create element name
-                el = f"{child.tag}{counter[child.tag]}"
-                # el = f"el{counter}"
-                counter[child.tag] += 1
-                # Create element
-                result.append(ast_create_fragment(el, child.tag, parent=target))
-                # Set static attributes and dynamic (bind) attributes
-                for key, value in child.attrs.items():
-                    if not is_directive(key):
-                        result.append(ast_set_attribute(el, key, value))
-                    elif key.startswith((DIRECTIVE_BIND, ":")):
-                        if key == DIRECTIVE_BIND:
-                            # TODO: bind complete dicts
-                            pass
-                        else:
-                            result.append(ast_add_dynamic_attribute(el, key, value))
-                    elif key.startswith((DIRECTIVE_ON, "@")):
-                        result.append(ast_add_event_listener(el, key, value))
-                    elif key.startswith(DIRECTIVE_IF):
-                        result.append(ast_add_condictional(target, el, value))
+            # if not control_flow_directive:
+            # Create element
+            result.append(
+                ast_create_fragment(el, child.tag, parent=control_flow_parent or parent)
+            )
+            if condition:
+                result.append(condition)
+            result.extend(attributes)
+            result.extend(binds)
+            result.extend(events)
+            # else:
+            # Figure out how to
+            # pass
 
-                # Mount new element in hierarchy
-                # result.append(ast_insert_element(el, target))
+            # Process the children
+            result.extend(create_children(child.children, el))
 
-                # Process the children
-                result.extend(create_children(child.children, el))
+        # if control_flow:
+        #     create_select_fragment(control_flow, target)
+        #     # children_args.append(create_control_flow_ast(control_flow, names=names))
+        #     control_flow = []
 
-            return result
+        return result
 
-        body.extend(create_children(child.children, el))
+    body.extend(create_children(node.children, "component"))
 
-        # Append el to elements
-        body.append(
-            ast.Expr(
-                value=ast.Call(
-                    func=ast.Attribute(
-                        value=ast.Name(id="fragments", ctx=ast.Load()),
-                        attr="append",
-                        ctx=ast.Load(),
-                    ),
-                    args=[ast.Name(id=el, ctx=ast.Load())],
-                    keywords=[],
-                )
-            ),
-        )
-
-    body.append(ast.Return(value=ast.Name(id="fragments", ctx=ast.Load())))
+    body.append(ast.Return(value=ast.Name(id="component", ctx=ast.Load())))
     return ast.FunctionDef(
         name="render",
         args=ast.arguments(
@@ -471,6 +554,7 @@ class Node:
     """Node that represents an element from a .kolla file."""
 
     def __init__(self, tag, attrs=None, location=None):
+        super().__init__()
         self.tag = tag
         self.attrs = attrs or {}
         self.location = location

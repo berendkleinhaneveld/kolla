@@ -27,6 +27,8 @@ class DictRenderer(Renderer):
     def remove(self, el, parent):
         children = parent["children"]
         children.remove(el)
+        if not children:
+            del parent["children"]
 
     def set_element_text(self, el: dict, value: str):
         el["text"] = value
@@ -39,6 +41,8 @@ class DictRenderer(Renderer):
         attributes = obj["attrs"]
         if attr in attributes:
             del attributes[attr]
+        if not attributes:
+            obj["attrs"]
 
     def add_event_listener(self, el, event_type, value):
         event_listeners = el.setdefault("handlers", defaultdict(set))
