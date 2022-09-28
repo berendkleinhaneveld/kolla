@@ -84,3 +84,28 @@ def test_static_integer_attribute(parse_source):
 
     app = container["children"][0]
     assert app["attrs"]["foo"] == 2
+
+
+def test_static_bool_attribute(parse_source):
+    App, _ = parse_source(
+        """
+        <app foo />
+
+        <script>
+        import kolla
+
+        class App(kolla.Component):
+            pass
+        </script>
+        """
+    )
+
+    container = {"type": "root"}
+    gui = Kolla(
+        renderer=DictRenderer(),
+        event_loop_type=EventLoopType.SYNC,
+    )
+    gui.render(App, container)
+
+    app = container["children"][0]
+    assert app["attrs"]["foo"] is True
