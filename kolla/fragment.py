@@ -20,32 +20,28 @@ class Fragment:
         self,
         renderer: Renderer,
         # tag = None for 'transient' Fragments, like a virtual root
-        tag: None | str | Callable | list[str | Callable] = None,
+        tag: None | str | Callable = None,
         parent: "Fragment" | None = None,
         type: FragmentType = FragmentType.NORMAL,
     ):
         super().__init__()
 
         self.renderer = renderer
-        self.tags: list[str | Callable] = []
-        self.elements: list[Any] = []
+        self.tag: str | Callable = tag
+        self.element: Any = None
         self.children: list["Fragment"] = []
         self.target = None
 
         self._parent: ref["Fragment"] | None = ref(parent) if parent else None
         self._attributes: dict[str, str] = {}
         self._events: dict[str, Callable] = {}
-
-        if isinstance(tag, str):
-            self.tags = [tag]
-
         self._watchers: dict[str, Watcher] = {}
 
         if parent:
             parent.children.append(self)
 
     def __repr__(self):
-        return f"<Fragment({self.tags[0]})>"
+        return f"<Fragment({self.tag})>"
 
     @property
     def parent(self) -> "Fragment" | None:
@@ -55,17 +51,13 @@ class Fragment:
     def parent(self, parent: "Fragment"):
         self._parent = ref(parent)
 
-    @property
-    def first(self) -> Any | None:
-        return self.elements and self.elements[0]
-
     def set_attribute(self, attr, value):
         self._attributes[attr] = value
 
     def set_bind(self, attr, expression):
         self._watchers[f"bind:{attr}"] = watch(
             expression,
-            lambda new: self.renderer.set_attribute(self.first, attr, new),
+            lambda new: self.renderer.set_attribute(self.element, attr, new),
             immediate=False,
         )
 
@@ -80,22 +72,21 @@ class Fragment:
         Creates instance, depending on whether there is
         an expression
         """
-        for tag in self.tags:
-            # Create the element
-            element = self.renderer.create_element(tag)
-            self.elements.append(element)
-            # Set all static attributes
-            for attr, value in self._attributes.items():
-                self.renderer.set_attribute(element, attr, value)
-            # Add all event handlers
-            # TODO: check what happens within v-for constructs?
-            for event, handler in self._events.items():
-                self.renderer.add_event_listener(element, event, handler)
-            # Set all dynamic aatributes
-            for key, watcher in self._watchers.items():
-                if key.startswith("bind:"):
-                    _, key = key.split(":")
-                    self.renderer.set_attribute(element, key, watcher.value)
+
+        # Create the element
+        self.element = self.renderer.create_element(self.tag)
+        # Set all static attributes
+        for attr, value in self._attributes.items():
+            self.renderer.set_attribute(self.element, attr, value)
+        # Add all event handlers
+        # TODO: check what happens within v-for constructs?
+        for event, handler in self._events.items():
+            self.renderer.add_event_listener(self.element, event, handler)
+        # Set all dynamic aatributes
+        for key, watcher in self._watchers.items():
+            if key.startswith("bind:"):
+                _, key = key.split(":")
+                self.renderer.set_attribute(self.element, key, watcher.value)
         # IDEA/TODO: for v-for, don't create instances direct, but
         # instead, create child fragments first, then call
         # create on those instead. Might involve some reparenting
@@ -103,16 +94,17 @@ class Fragment:
 
     def mount(self, target: Any, anchor: Any | None = None):
         self.target = target
-        if not self.elements:
-            self.create()
-        for element in self.elements:
-            self.renderer.insert(element, parent=target, anchor=anchor)
-            for child in self.children:
-                child.mount(element)
+        self.create()
+        self.renderer.insert(self.element, parent=target, anchor=anchor)
+        for child in self.children:
+            child.mount(self.element)
 
     def unmount(self):
-        for element in self.elements:
-            self.renderer.remove(element, self.target)
+        for child in self.children:
+            child.unmount()
+
+        self.renderer.remove(self.element, self.target)
+        self.element = None
 
     def patch(self):
         pass
