@@ -1,6 +1,3 @@
-[![PyPI version](https://badge.fury.io/py/kolla.svg)](https://badge.fury.io/py/kolla)
-[![CI status](https://github.com/fork-tongue/kolla/workflows/CI/badge.svg)](https://github.com/fork-tongue/kolla/actions)
-
 # Kolla 📓
 
 Reactive user interfaces.
@@ -20,32 +17,39 @@ Write your Python interfaces in a declarative manner with plain render functions
 
 * Reactivity (made possible by leveraging [observ](https://github.com/fork-tongue/observ))
 * Single-file components with Vue-like syntax (`.kolla` files)
-* Function components
 * Class components with local state and life-cycle methods/hooks
 * Custom renderers
 
-Here is an example that shows a simple counter, made with a function component:
+Here is an example that shows a simple counter:
 
 ```python
 from PySide6 import QtWidgets
-from observ import reactive
+import kolla
+from kolla.sfc import sfc
+
+# The source normally resides in a .kolla file
+# which can be imported like any other python file
+# after the `import kolla` line. For this example
+# we'll just parse directly from a string.
+source = """
+<widget>
+  <label :text="f'Count: {count}'" />
+  <button text="Bump" @clicked="bump" />
+</widget>
+
+<script>
 import kolla
 
-# Declare some reactive state
-state = reactive({"count": 0})
+class Counter(kolla.Component):
+    def __init__(self, props):
+        super().__init__(props)
+        self.state["count"] = 0
 
-# Define function that adjusts the state
-def bump():
-    state["count"] += 1
-
-# Declare how the state should be rendered
-def Counter(props):
-    return kolla.h(
-        "widget",
-        {},
-        kolla.h("label", {"text": f"Count: {props['count']}"}),
-        kolla.h("button", {"text": "Bump", "on_clicked": bump}),
-    )
+    def bump(self):
+        self.state["count"] += 1
+</script>
+"""
+Counter, module = sfc.load_from_string(source)
 
 # Create a Kolla instance with a PySide renderer 
 # and register with the Qt event loop
@@ -56,15 +60,17 @@ gui = kolla.Kolla(
 # Render the function component into a container 
 # (in this case the app but can be another widget)
 app = QtWidgets.QApplication()
-gui.render(kolla.h(Counter, state), app)
+gui.render(Counter, app)
 app.exec()
 ```
 
 For more examples, please take a look at the [examples folder](examples).
 
-Currently there are two renderers:
+Currently there are four renderers:
 
 * [PysideRenderer](kolla/renderers/pyside_renderer.py): for rendering PySide6 applications
 * [PygfxRenderer](kolla/renderers/pygfx_renderer.py): for rendering 3D graphic scenes with [Pygfx](https://github.com/pygfx/pygfx)
+* [DomRenderer](kolla/renderers/dom_renderer.py): for rendering to HTML DOM with [PyScript](http://pyscript.net)
+* [DictRenderer](kolla/renderers/dict_renderer.py): for testing purposes
 
-It is possible to create a custom Renderer using the [Renderer](kolla/renderers/__init__.py) interface, to render to other UI frameworks, for instance wxPython, or even the browser DOM.
+It is possible to create a custom `Renderer` using the [Renderer](kolla/renderers/__init__.py) interface, to render to other UI frameworks, for instance [wxPython](https://wxpython.org) and [GTK](https://pygobject.readthedocs.io/en/latest/) or any other dynamic tree-like structure that you can think of.
