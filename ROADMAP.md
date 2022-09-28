@@ -1,0 +1,29 @@
+# Roadmap
+
+- [ ] Tags
+	- [X] Static tags
+	- [ ] Component tags
+	- [ ] Dynamic tags (<component is="...">)
+- [ ] Attributes and props
+	- [X] Static attributes
+	- [X] Boolean attributes
+	- [ ] Bound attributes
+		- [X] Single attributes (v-bind: / :)
+		- [ ] Bound dicts/objects (v-bind)
+- [ ] Text expressions
+- [ ] Directives
+	- [X] v-if
+	- [X] v-else-if
+	- [X] v-else
+	- [ ] v-for
+	- [X] v-on / @ (events)
+	- [ ] Event modifiers
+- [ ] Slots
+	- [ ] Default slot
+	- [ ] Named
+	- [ ] Default slot content
+- [ ] Component life cycle
+	- [ ] mounted
+	- [ ] updated
+	- [ ] before_unmount
+- [ ] Component events / emit
