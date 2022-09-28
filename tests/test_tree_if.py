@@ -66,3 +66,42 @@ def test_directive_if_nested(parse_source):
 
     assert len(app["children"]) == 1
     assert app["children"][0]["type"] == "item"
+
+
+def test_directive_if_with_children(parse_source):
+    App, _ = parse_source(
+        """
+        <app v-if="foo">
+          <item text="foo" />
+        </app>
+
+        <script>
+        import kolla
+
+        class App(kolla.Component):
+            pass
+        </script>
+        """
+    )
+
+    state = reactive({"foo": False})
+    container = {"type": "root"}
+    gui = Kolla(
+        renderer=DictRenderer(),
+        event_loop_type=EventLoopType.SYNC,
+    )
+    gui.render(App, container, state=state)
+
+    assert "children" not in container
+
+    state["foo"] = True
+
+    app = container["children"][0]
+    assert app["type"] == "app"
+    assert len(app["children"]) == 1
+    assert app["children"][0]["type"] == "item"
+    assert app["children"][0]["attrs"]["text"] == "foo"
+
+    state["foo"] = False
+
+    assert "children" not in container
