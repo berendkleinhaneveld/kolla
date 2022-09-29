@@ -208,6 +208,22 @@ def ast_set_attribute(el, key, value):
     )
 
 
+def ast_add_dynamic_type(el, value):
+    source = ast.parse(
+        textwrap.dedent(f"{el}.set_type(lambda: {value})"),
+        mode="eval",
+    )
+    lambda_names = LambdaNamesCollector()
+    lambda_names.visit(source)
+    return ast.Expr(
+        value=(
+            RewriteName(skip={"renderer", "new", el, "watch"} | lambda_names.names)
+            .visit(source)
+            .body
+        )
+    )
+
+
 def ast_add_dynamic_attribute(el, key, value):
     _, key = key.split(":")
     source = ast.parse(
@@ -384,6 +400,8 @@ def create_kolla_render_function(node, names):
                     if key == DIRECTIVE_BIND:
                         # TODO: bind complete dicts
                         pass
+                    elif key == ":is" and el.startswith("component"):
+                        binds.append(ast_add_dynamic_type(el, value))
                     else:
                         binds.append(ast_add_dynamic_attribute(el, key, value))
                 elif key.startswith((DIRECTIVE_ON, "@")):

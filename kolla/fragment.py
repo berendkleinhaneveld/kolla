@@ -61,6 +61,22 @@ class Fragment:
             immediate=False,
         )
 
+    def set_type(self, expression):
+        def update_type(tag):
+            self.unmount()
+            self.tag = tag
+            # TODO: also figure out the right anchor
+            # Maybe ask parent for the right anchor?
+            self.mount(self.target)
+
+        # Update the tag immediately
+        self.tag = expression()
+        self._watchers["type"] = watch(
+            expression,
+            update_type,
+            immediate=False,
+        )
+
     def set_condition(self, expression):
         self.condition = expression
 
