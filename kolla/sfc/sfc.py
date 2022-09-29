@@ -269,7 +269,6 @@ def ast_add_condictional(parent, child, condition):
                 ast.Constant(value=child),
                 ast.Name(id=child, ctx=ast.Load()),
                 condition_ast.body,
-                # ast.Name(id="renderer", ctx=ast.Load()),
             ],
             keywords=[],
         )
@@ -346,40 +345,10 @@ def create_kolla_render_function(node, names):
     )
 
     counter = defaultdict(int)
-    # for child in node.children:
-    #     # Create element name
-    #     el = f"{child.tag}{counter[child.tag]}"
-    #     # el = f"el{counter}"
-    #     counter[child.tag] += 1
-    #     # Create element
-    #     body.append(ast_create_fragment(el, child.tag))
-    #     # Set static attributes
-    #     for key, value in child.attrs.items():
-    #         if not is_directive(key):
-    #             body.append(ast_set_attribute(el, key, value))
-    #         elif key.startswith((DIRECTIVE_BIND, ":")):
-    #             if key == DIRECTIVE_BIND:
-    #                 # TODO: bind complete dicts
-    #                 pass
-    #             else:
-    #                 body.append(ast_add_dynamic_attribute(el, key, value))
-    #         elif key.startswith((DIRECTIVE_ON, "@")):
-    #             body.append(ast_add_event_listener(el, key, value))
-    # TODO: how to support root-level v-ifs??
-    # Maybe just not support it for now?
-    # elif key.startswith(DIRECTIVE_IF):
-    #     body.append(ast_add_condictional(target, el, value))
-
-    def create_select_fragment(nodes, target):
-        print("CREATE CONTROL FLOW")
-        # Create ControlFlowFragment
-        # Add
-        pass
 
     # Create and add children
     def create_children(nodes: list[Node], target: str):
         result = []
-        # control_flow = []
         control_flow_parent = None
         for child in nodes:
             nonlocal counter
@@ -401,17 +370,12 @@ def create_kolla_render_function(node, names):
             condition = None
 
             if control_flow_directive := child.control_flow():
-                #     parent = None
                 if control_flow_directive == DIRECTIVE_IF:
                     control_flow_parent = f"control_flow{counter['control_flow']}"
                     counter["control_flow"] += 1
-            #     control_flow.append((control_flow_directive, child))
             else:
                 # Reset the control flow parent
                 control_flow_parent = None
-            # elif control_flow:
-            #     create_select_fragment(control_flow, target)
-            #     control_flow = []
 
             for key, value in child.attrs.items():
                 if not is_directive(key):
@@ -432,8 +396,6 @@ def create_kolla_render_function(node, names):
                 elif key == DIRECTIVE_ELSE:
                     pass
 
-            # if not control_flow_directive:
-            # Create element
             result.append(
                 ast_create_fragment(el, child.tag, parent=control_flow_parent or parent)
             )
@@ -442,17 +404,9 @@ def create_kolla_render_function(node, names):
             result.extend(attributes)
             result.extend(binds)
             result.extend(events)
-            # else:
-            # Figure out how to
-            # pass
 
             # Process the children
             result.extend(create_children(child.children, el))
-
-        # if control_flow:
-        #     create_select_fragment(control_flow, target)
-        #     # children_args.append(create_control_flow_ast(control_flow, names=names))
-        #     control_flow = []
 
         return result
 
