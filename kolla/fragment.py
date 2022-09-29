@@ -72,6 +72,8 @@ class Fragment:
         Creates instance, depending on whether there is
         an expression
         """
+        if self.tag == "template":
+            return
 
         # Create the element
         self.element = self.renderer.create_element(self.tag)
@@ -95,9 +97,11 @@ class Fragment:
     def mount(self, target: Any, anchor: Any | None = None):
         self.target = target
         self.create()
-        self.renderer.insert(self.element, parent=target, anchor=anchor)
+
+        if self.element:
+            self.renderer.insert(self.element, parent=target, anchor=anchor)
         for child in self.children:
-            child.mount(self.element)
+            child.mount(self.element or target)
 
     def unmount(self):
         for child in self.children:

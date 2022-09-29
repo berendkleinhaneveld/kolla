@@ -1,10 +1,7 @@
-import pytest
-
 from kolla import Kolla, EventLoopType
 from kolla.renderers import DictRenderer
 
 
-@pytest.mark.xfail
 def test_basic_dict_renderer(parse_source):
     App, _ = parse_source(
         """
