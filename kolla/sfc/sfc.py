@@ -134,10 +134,10 @@ def construct_ast(path, template=None):
     render_tree = create_kolla_render_function(parser.root, names=imported_names.names)
     ast.fix_missing_locations(render_tree)
 
-    try:
-        _print_ast_tree_as_code(render_tree)
-    except Exception as e:
-        logger.warning("Could not unparse AST", exc_info=e)
+    # try:
+    #     _print_ast_tree_as_code(render_tree)
+    # except Exception as e:
+    #     logger.warning("Could not unparse AST", exc_info=e)
 
     # Put location of render function outside of the script tag
     # This makes sure that the render function can be excluded
@@ -208,7 +208,9 @@ def ast_set_attribute(el, key, value):
     )
 
 
-def ast_add_dynamic_type(el, value):
+def ast_add_dynamic_type(el, value, names):
+    if names is None:
+        names = set()
     source = ast.parse(
         textwrap.dedent(f"{el}.set_type(lambda: {value})"),
         mode="eval",
@@ -217,14 +219,16 @@ def ast_add_dynamic_type(el, value):
     lambda_names.visit(source)
     return ast.Expr(
         value=(
-            RewriteName(skip={"renderer", "new", el, "watch"} | lambda_names.names)
+            RewriteName(
+                skip={"renderer", "new", el, "watch"} | lambda_names.names | names
+            )
             .visit(source)
             .body
         )
     )
 
 
-def ast_add_dynamic_attribute(el, key, value):
+def ast_add_dynamic_attribute(el, key, value, names):
     _, key = key.split(":")
     source = ast.parse(
         textwrap.dedent(f'{el}.set_bind("{key}", lambda: {value})'),
@@ -234,14 +238,16 @@ def ast_add_dynamic_attribute(el, key, value):
     lambda_names.visit(source)
     return ast.Expr(
         value=(
-            RewriteName(skip={"renderer", "new", el, "watch"} | lambda_names.names)
+            RewriteName(
+                skip={"renderer", "new", el, "watch"} | lambda_names.names | names
+            )
             .visit(source)
             .body
         )
     )
 
 
-def ast_add_event_listener(el, key, value):
+def ast_add_event_listener(el, key, value, names):
     split_char = "@" if key.startswith("@") else ":"
     _, key = key.split(split_char)
 
@@ -252,7 +258,9 @@ def ast_add_event_listener(el, key, value):
     # which need to be skipped by the RewriteName visitor
     lambda_names = LambdaNamesCollector()
     lambda_names.visit(expression_ast)
-    RewriteName(skip={"args", "kwargs"} | lambda_names.names).visit(expression_ast)
+    RewriteName(skip={"args", "kwargs"} | lambda_names.names | names).visit(
+        expression_ast
+    )
 
     return ast.Expr(
         value=ast.Call(
@@ -270,9 +278,9 @@ def ast_add_event_listener(el, key, value):
     )
 
 
-def ast_add_condictional(parent, child, condition):
+def ast_add_condictional(parent, child, condition, names):
     condition_ast = ast.parse(f"lambda: bool({condition})", mode="eval")
-    RewriteName(skip=set()).visit(condition_ast)
+    RewriteName(skip=names).visit(condition_ast)
 
     return ast.Expr(
         value=ast.Call(
@@ -291,9 +299,9 @@ def ast_add_condictional(parent, child, condition):
     )
 
 
-def ast_add_condition(child, condition):
+def ast_add_condition(child, condition, names):
     condition_ast = ast.parse(f"lambda: bool({condition})", mode="eval")
-    RewriteName(skip=set()).visit(condition_ast)
+    RewriteName(skip=names).visit(condition_ast)
 
     return ast.Expr(
         value=ast.Call(
@@ -326,6 +334,25 @@ def ast_create_control_flow(name, parent):
     )
 
 
+def ast_create_list_fragment(name, parent, expression):
+    # TODO: figure out how to treat the expression
+    return ast.Assign(
+        targets=[ast.Name(id=name, ctx=ast.Store())],
+        value=ast.Call(
+            func=ast.Name(id="ListFragment", ctx=ast.Load()),
+            args=[
+                ast.Name(id="renderer", ctx=ast.Load()),
+            ],
+            keywords=[
+                ast.keyword(
+                    arg="parent",
+                    value=ast.Name(id=parent, ctx=ast.Load()),
+                )
+            ],
+        ),
+    )
+
+
 def create_kolla_render_function(node, names):
     body: list[ast.Assign | ast.Expr | ast.Return] = []
     body.append(
@@ -339,8 +366,10 @@ def create_kolla_render_function(node, names):
         ast.ImportFrom(
             module="kolla.fragment",
             names=[
+                # TODO: import only the needed items
                 ast.alias(name="ControlFlowFragment"),
                 ast.alias(name="ComponentFragment"),
+                ast.alias(name="ListFragment"),
                 ast.alias(name="Fragment"),
             ],
             level=0,
@@ -361,13 +390,61 @@ def create_kolla_render_function(node, names):
     )
 
     counter = defaultdict(int)
+    names = set()
+
+    def create_fragments_function(
+        node: Node, targets: ast.Name | ast.Tuple, names: set
+    ):
+        name = f"create_{node.tag}"
+        # FIXME: naming the return obj is a bit shaky...
+        return_stmt = ast.Return(
+            value=ast.Name(id=f"{node.tag}{counter[node.tag]}", ctx=ast.Load())
+        )
+
+        unpack_context = ast.Assign(
+            targets=[targets],
+            value=ast.Name(id="context", ctx=ast.Load()),
+        )
+
+        names_collector = StoredNameCollector()
+        names_collector.visit(targets)
+        unpacked_names = names_collector.names
+
+        # TODO: add 'ctx' argument in order to pass context to the create_node method
+        function = ast.FunctionDef(
+            name=name,
+            args=ast.arguments(
+                posonlyargs=[],
+                args=[ast.arg("context")],
+                kwonlyargs=[],
+                kw_defaults=[],
+                defaults=[],
+            ),
+            # TODO: parse the v-for expression and create an ast loop
+            # over those items to create Fragments on the fly
+            body=[
+                unpack_context,
+                *create_children(
+                    [node],
+                    None,
+                    names=names | unpacked_names,
+                    within_for_loop=True,
+                ),
+            ],
+            decorator_list=[],
+            returns=None,
+        )
+        function.body.append(return_stmt)
+
+        return name, function
 
     # Create and add children
-    def create_children(nodes: list[Node], target: str):
+    def create_children(
+        nodes: list[Node], target: str, names: set, within_for_loop=False
+    ):
         result = []
         control_flow_parent = None
         for child in nodes:
-            nonlocal counter
             # Create element name
             el = f"{child.tag}{counter[child.tag]}"
             counter[child.tag] += 1
@@ -385,6 +462,75 @@ def create_kolla_render_function(node, names):
             binds = []
             condition = None
 
+            node_with_list_expression = False
+            if not within_for_loop:
+                for key in filter(lambda item: item.startswith("v-for"), child.attrs):
+                    node_with_list_expression = True
+                    # Special v-for node!
+                    expression = child.attrs[key]
+                    name = f"list{counter['list']}"
+                    counter["list"] += 1
+                    result.append(
+                        ast_create_list_fragment(
+                            name, control_flow_parent or parent, expression
+                        )
+                    )
+                    expr = f"[None for {expression}]"
+                    expression_ast = ast.parse(expr).body[0].value
+                    iterator = expression_ast.generators[0].iter
+                    targets = expression_ast.generators[0].target
+
+                    func_name, function = create_fragments_function(
+                        child, targets, names
+                    )
+                    is_keyed = ":key" in child.attrs
+                    result.append(function)
+                    result.append(
+                        ast.Expr(
+                            value=ast.Call(
+                                func=ast.Attribute(
+                                    value=ast.Name(id=name, ctx=ast.Load()),
+                                    attr="set_create_fragment",
+                                    ctx=ast.Load(),
+                                ),
+                                args=[
+                                    ast.Name(id=func_name, ctx=ast.Load()),
+                                    ast.Constant(value=is_keyed),
+                                ],
+                                keywords=[],
+                            )
+                        )
+                    )
+
+                    iterator_fn = ast.Lambda(
+                        args=ast.arguments(
+                            posonlyargs=[],
+                            args=[],
+                            kwonlyargs=[],
+                            kw_defaults=[],
+                            defaults=[],
+                        ),
+                        body=iterator,
+                    )
+
+                    result.append(
+                        ast.Expr(
+                            value=ast.Call(
+                                func=ast.Attribute(
+                                    value=ast.Name(id=name, ctx=ast.Load()),
+                                    attr="set_expression",
+                                    ctx=ast.Load(),
+                                ),
+                                args=[iterator_fn],
+                                keywords=[],
+                            )
+                        )
+                    )
+                    break
+
+            if node_with_list_expression:
+                continue
+
             if control_flow_directive := child.control_flow():
                 if control_flow_directive == DIRECTIVE_IF:
                     control_flow_parent = f"control_flow{counter['control_flow']}"
@@ -401,16 +547,16 @@ def create_kolla_render_function(node, names):
                         # TODO: bind complete dicts
                         pass
                     elif key == ":is" and el.startswith("component"):
-                        binds.append(ast_add_dynamic_type(el, value))
+                        binds.append(ast_add_dynamic_type(el, value, names))
                     else:
-                        binds.append(ast_add_dynamic_attribute(el, key, value))
+                        binds.append(ast_add_dynamic_attribute(el, key, value, names))
                 elif key.startswith((DIRECTIVE_ON, "@")):
-                    events.append(ast_add_event_listener(el, key, value))
+                    events.append(ast_add_event_listener(el, key, value, names))
                 elif key == DIRECTIVE_IF:
                     result.append(ast_create_control_flow(control_flow_parent, target))
-                    condition = ast_add_condition(el, value)
+                    condition = ast_add_condition(el, value, names)
                 elif key == DIRECTIVE_ELSE_IF:
-                    condition = ast_add_condition(el, value)
+                    condition = ast_add_condition(el, value, names)
                 elif key == DIRECTIVE_ELSE:
                     pass
 
@@ -424,11 +570,11 @@ def create_kolla_render_function(node, names):
             result.extend(events)
 
             # Process the children
-            result.extend(create_children(child.children, el))
+            result.extend(create_children(child.children, el, names))
 
         return result
 
-    body.extend(create_children(node.children, "component"))
+    body.extend(create_children(node.children, "component", names))
 
     body.append(ast.Return(value=ast.Name(id="component", ctx=ast.Load())))
     return ast.FunctionDef(
@@ -447,6 +593,18 @@ def create_kolla_render_function(node, names):
 
 def is_directive(key):
     return key.startswith((DIRECTIVE_PREFIX, ":", "@"))
+
+
+class StoredNameCollector(ast.NodeVisitor):
+    """AST node visitor that will create a set of the ids of every Name node
+    it encounters."""
+
+    def __init__(self):
+        self.names = set()
+
+    def visit_Name(self, node):
+        if isinstance(node.ctx, ast.Store):
+            self.names.add(node.id)
 
 
 class NameCollector(ast.NodeVisitor):

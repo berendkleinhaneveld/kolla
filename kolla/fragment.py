@@ -167,8 +167,59 @@ class ControlFlowFragment(Fragment):
 
 
 class ListFragment(Fragment):
+    """
+    1. Handle expression (for 'X' in 'Y') in multiple parts (by analyzing the
+       AST):
+        A. Create a watcher for collection 'Y'
+        B. Callback will create (or update existing) Fragments
+            - When unkeyed:
+                idx = 0
+                for 'X' in 'Y':
+                    if idx < len(fragments):
+                        fragment = fragments[idx]
+                    else:
+                        fragment = Fragment(...)
+                    ...
+                    idx += 1
+    """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **{**kwargs, "type": FragmentType.LIST})
+        self.create_fragment: Callable | None = None
+        self.expression: str = None
+        # TODO: implement special mount method
+        # NOTE: use expression attribute
+
+    def set_create_fragment(self, create_fragment: Callable, is_keyed: bool):
+        self.create_fragment = create_fragment
+        self.is_keyed = is_keyed
+
+    def set_expression(self, expression: str):
+        self.expression = expression
+
+    def mount(self, target: Any, anchor: Any | None = None):
+        self.target = target
+
+        def update_list(items):
+            # TODO: adjust method based on keyed/unkeyed
+            if not self.children:
+                for context in items:
+                    fragment = self.create_fragment(context)
+                    self.children.append(fragment)
+                    fragment.parent = self
+            else:
+                # TODO: handle existing fragments
+                pass
+
+            for child in self.children:
+                child.mount(target)
+
+        self._watchers["list"] = watch(
+            self.expression,
+            update_list,
+            immediate=True,
+            deep=True,
+        )
 
 
 class ComponentFragment(Fragment):
