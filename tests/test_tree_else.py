@@ -39,3 +39,48 @@ def test_directive_else_root(parse_source):
 
     assert len(container["children"]) == 1
     assert container["children"][0]["type"] == "bar"
+
+
+def test_directive_else_surrounded(parse_source):
+    App, _ = parse_source(
+        """
+        <before />
+        <foo v-if="foo" />
+        <bar v-else />
+        <after />
+
+        <script>
+        import kolla
+
+        class App(kolla.Component):
+            pass
+        </script>
+        """
+    )
+
+    state = reactive({"foo": False})
+    container = {"type": "root"}
+    gui = Kolla(
+        renderer=DictRenderer(),
+        event_loop_type=EventLoopType.SYNC,
+    )
+    gui.render(App, container, state=state)
+
+    assert len(container["children"]) == 3
+    assert container["children"][0]["type"] == "before"
+    assert container["children"][1]["type"] == "bar"
+    assert container["children"][2]["type"] == "after"
+
+    state["foo"] = True
+
+    assert len(container["children"]) == 3
+    assert container["children"][0]["type"] == "before"
+    assert container["children"][1]["type"] == "foo"
+    assert container["children"][2]["type"] == "after"
+
+    state["foo"] = False
+
+    assert len(container["children"]) == 3
+    assert container["children"][0]["type"] == "before"
+    assert container["children"][1]["type"] == "bar"
+    assert container["children"][2]["type"] == "after"

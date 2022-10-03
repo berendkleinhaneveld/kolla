@@ -33,6 +33,10 @@ def test_directive_if_root(parse_source):
     assert len(container["children"]) == 1
     assert container["children"][0]["type"] == "app"
 
+    state["foo"] = False
+
+    assert "children" not in container
+
 
 def test_directive_if_nested(parse_source):
     App, _ = parse_source(
@@ -66,6 +70,10 @@ def test_directive_if_nested(parse_source):
 
     assert len(app["children"]) == 1
     assert app["children"][0]["type"] == "item"
+
+    state["foo"] = False
+
+    assert "children" not in app
 
 
 def test_directive_if_with_children(parse_source):
@@ -105,3 +113,45 @@ def test_directive_if_with_children(parse_source):
     state["foo"] = False
 
     assert "children" not in container
+
+
+def test_directive_if_surrounded(parse_source):
+    App, _ = parse_source(
+        """
+        <before />
+        <app v-if="foo" />
+        <after />
+
+        <script>
+        import kolla
+
+        class App(kolla.Component):
+            pass
+        </script>
+        """
+    )
+
+    state = reactive({"foo": False})
+    container = {"type": "root"}
+    gui = Kolla(
+        renderer=DictRenderer(),
+        event_loop_type=EventLoopType.SYNC,
+    )
+    gui.render(App, container, state=state)
+
+    assert len(container["children"]) == 2
+    assert container["children"][0]["type"] == "before"
+    assert container["children"][-1]["type"] == "after"
+
+    state["foo"] = True
+
+    assert len(container["children"]) == 3
+    assert container["children"][1]["type"] == "app"
+    assert container["children"][0]["type"] == "before"
+    assert container["children"][-1]["type"] == "after"
+
+    state["foo"] = False
+
+    assert len(container["children"]) == 2
+    assert container["children"][0]["type"] == "before"
+    assert container["children"][-1]["type"] == "after"

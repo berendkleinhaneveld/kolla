@@ -123,18 +123,37 @@ class Fragment:
         for child in self.children:
             child.unmount()
 
+        # if self.element:
         self.renderer.remove(self.element, self.target)
         self.element = None
 
     def patch(self):
         pass
 
+    def first(self):
+        """
+        Returns the first DOM element (if any), from either itself, or its decendants,
+        in case of virtual fragments.
+        """
+        if self.element:
+            return self.element
+        for child in self.children:
+            if child.element:
+                return child.element
+
     def anchor(self, other: "Fragment") -> "Fragment":
-        """Returns the fragment that serves as anchor for the
+        """
+        Returns the fragment that serves as anchor for the
         other fragment. Anchor is the first mounted item *after* the
         current item.
         """
-        pass
+        if self.children:
+            idx = self.children.index(other)
+            length = len(self.children) - 1
+            while idx < length:
+                idx += 1
+                if element := self.children[idx].first():
+                    return element
 
 
 class ControlFlowFragment(Fragment):
@@ -145,6 +164,7 @@ class ControlFlowFragment(Fragment):
         self.target = target
 
         def active_child():
+            # breakpoint()
             for child in self.children:
                 if hasattr(child, "condition"):
                     if child.condition():
@@ -154,9 +174,13 @@ class ControlFlowFragment(Fragment):
 
         def update_fragment(new, old):
             if old:
+                print("unmounting:", old)
+                print("mounting:", new)
                 old.unmount()
             if new:
-                new.mount(self.target)
+                if self.parent:
+                    anchor = self.parent.anchor(self)
+                new.mount(self.target, anchor)
 
         self._watchers["control_flow"] = watch(
             active_child,
