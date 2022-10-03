@@ -33,6 +33,12 @@ pytest-qt = "*"
 pytest-xvfb = "*"
 rich = {version = "^12.5.1", python = "<4.0"}
 
+[tool.coverage.run]
+omit = [
+	"tests/*",
+	"kolla/renderers/*"
+]
+
 [build-system]
 requires = ["poetry>=1.0.0"]
 build-backend = "poetry.masonry.api"
