@@ -107,7 +107,10 @@ def test_reconcile_by_key(parse_source):
     renderer = CustomElementRenderer()
 
     for before, after, name in states:
-        gui = Kolla(renderer=renderer, event_loop_type=EventLoopType.SYNC)
+        gui = Kolla(
+            renderer=renderer,
+            event_loop_type=EventLoopType.SYNC,
+        )
         container = CustomElement()
         container.type = "root"
         container.children = []
