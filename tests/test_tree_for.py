@@ -1,4 +1,5 @@
 import pytest
+from observ import reactive
 
 from kolla import Kolla, EventLoopType
 from kolla.renderers import DictRenderer
@@ -109,7 +110,6 @@ def test_for_between_other_tags(parse_source):
     # TODO: add tests for response to changes in size of v-for
 
 
-@pytest.mark.xfail
 def test_for_between_if_tags(parse_source):
     """Render a node with a 1000 children.
 
@@ -135,26 +135,45 @@ def test_for_between_if_tags(parse_source):
         """
     )
 
+    state = reactive(
+        {
+            "foo": False,
+            "bar": False,
+        }
+    )
     container = {"type": "root"}
     gui = Kolla(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )
-    gui.render(App, container)
+    gui.render(App, container, state=state)
 
     assert len(container["children"]) == 10
     for idx, child in enumerate(container["children"]):
         assert child["attrs"]["value"] == idx
 
+    state["foo"] = True
+
+    assert len(container["children"]) == 11
+    assert container["children"][0]["type"] == "foo"
+
+    state["bar"] = True
+
+    assert len(container["children"]) == 12
+    assert container["children"][0]["type"] == "foo"
+    assert container["children"][11]["type"] == "bar"
+
 
 @pytest.mark.xfail
 def test_for_keyed(parse_source):
+    # TODO: rewrite test
+    assert False
     App, _ = parse_source(
         """
         <app>
           <node
-            v-for="_ in range(1000)"
-            :key="
+            v-for="i in range(1000)"
+            :key="i"
           />
         </app>
 
@@ -168,7 +187,10 @@ def test_for_keyed(parse_source):
     )
 
     container = {"type": "root"}
-    gui = Kolla(renderer=DictRenderer(), event_loop_type=EventLoopType.SYNC)
+    gui = Kolla(
+        renderer=DictRenderer(),
+        event_loop_type=EventLoopType.SYNC,
+    )
     gui.render(App, container)
 
     assert len(container["children"][0]["children"]) == 1000

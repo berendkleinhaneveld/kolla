@@ -470,11 +470,9 @@ def create_kolla_render_function(node, names):
                     expression = child.attrs[key]
                     name = f"list{counter['list']}"
                     counter["list"] += 1
-                    result.append(
-                        ast_create_list_fragment(
-                            name, control_flow_parent or parent, expression
-                        )
-                    )
+                    # Reset any control flow that came before
+                    control_flow_parent = None
+                    result.append(ast_create_list_fragment(name, parent, expression))
                     expr = f"[None for {expression}]"
                     expression_ast = ast.parse(expr).body[0].value
                     iterator = expression_ast.generators[0].iter
