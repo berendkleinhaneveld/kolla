@@ -127,9 +127,6 @@ class Fragment:
         self.renderer.remove(self.element, self.target)
         self.element = None
 
-    def patch(self):
-        pass
-
     def first(self):
         """
         Returns the first DOM element (if any), from either itself, or its decendants,

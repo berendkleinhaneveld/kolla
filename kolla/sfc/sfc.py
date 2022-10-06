@@ -209,8 +209,6 @@ def ast_set_attribute(el, key, value):
 
 
 def ast_add_dynamic_type(el, value, names):
-    if names is None:
-        names = set()
     source = ast.parse(
         textwrap.dedent(f"{el}.set_type(lambda: {value})"),
         mode="eval",
@@ -272,27 +270,6 @@ def ast_add_event_listener(el, key, value, names):
             args=[
                 ast.Constant(value=key),
                 expression_ast.body,
-            ],
-            keywords=[],
-        )
-    )
-
-
-def ast_add_condictional(parent, child, condition, names):
-    condition_ast = ast.parse(f"lambda: bool({condition})", mode="eval")
-    RewriteName(skip=names).visit(condition_ast)
-
-    return ast.Expr(
-        value=ast.Call(
-            func=ast.Attribute(
-                value=ast.Name(id=parent, ctx=ast.Load()),
-                attr="add_conditional_item",
-                ctx=ast.Load(),
-            ),
-            args=[
-                ast.Constant(value=child),
-                ast.Name(id=child, ctx=ast.Load()),
-                condition_ast.body,
             ],
             keywords=[],
         )
