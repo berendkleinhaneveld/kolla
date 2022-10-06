@@ -165,9 +165,47 @@ def test_for_between_if_tags(parse_source):
 
 
 @pytest.mark.xfail
+def test_for_reactive(parse_source):
+    App, _ = parse_source(
+        """
+        <node
+          v-for="i in items"
+          :value="i"
+        />
+
+        <script>
+        import kolla
+
+        class App(kolla.Component):
+            pass
+        </script>
+        """
+    )
+
+    state = reactive({"items": ["a", "b"]})
+    container = {"type": "root"}
+    gui = Kolla(
+        renderer=DictRenderer(),
+        event_loop_type=EventLoopType.SYNC,
+    )
+    gui.render(App, container, state=state)
+
+    assert len(container["children"]) == len(state["items"])
+    for idx, item in enumerate(state["items"]):
+        assert container["children"][idx]["attrs"]["value"] == item
+
+    state["items"].append("c")
+
+    assert len(container["children"]) == len(state["items"])
+    for idx, item in enumerate(state["items"]):
+        assert container["children"][idx]["attrs"]["value"] == item
+
+
+@pytest.mark.xfail
 def test_for_keyed(parse_source):
     # TODO: rewrite test
     assert False
+
     App, _ = parse_source(
         """
         <app>
