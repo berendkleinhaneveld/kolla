@@ -452,8 +452,16 @@ def create_kolla_render_function(node, names):
                     result.append(ast_create_list_fragment(name, parent, expression))
                     expr = f"[None for {expression}]"
                     expression_ast = ast.parse(expr).body[0].value
-                    iterator = expression_ast.generators[0].iter
                     targets = expression_ast.generators[0].target
+                    # Set the `target` to None so that the targets don't get
+                    # rewritten by the RewriteName NodeTransformer
+                    # The NodeTransformer doesn't transform the root node, so
+                    # we need to pass in the parent node of the node that we
+                    # want to transform which is also the parent node of `target`
+                    expression_ast.generators[0].target = None
+
+                    RewriteName(names).visit(expression_ast.generators[0])
+                    iterator = expression_ast.generators[0].iter
 
                     func_name, function = create_fragments_function(
                         child, targets, names
