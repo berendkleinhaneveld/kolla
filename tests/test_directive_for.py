@@ -164,7 +164,6 @@ def test_for_between_if_tags(parse_source):
     assert container["children"][11]["type"] == "bar"
 
 
-@pytest.mark.xfail
 def test_for_reactive(parse_source):
     App, _ = parse_source(
         """

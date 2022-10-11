@@ -4,7 +4,7 @@ from kolla import Kolla, EventLoopType
 from kolla.renderers import DictRenderer
 
 
-def test_dynamic_component_type(parse_source):
+def test_dynamic_component_tag(parse_source):
     App, _ = parse_source(
         """
         <component :is="foo" />

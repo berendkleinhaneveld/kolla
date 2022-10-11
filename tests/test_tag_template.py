@@ -27,3 +27,8 @@ def test_basic_dict_renderer(parse_source):
 
     assert len(container["children"]) == 1
     assert container["children"][0]["type"] == "foo"
+
+    App = None
+    _ = None
+    container = None
+    gui = None
