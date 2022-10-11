@@ -3,7 +3,8 @@
 - [ ] Tags
 	- [X] Static tags
 	- [ ] Component tags
-	- [ ] Dynamic tags (<component is="...">)
+	- [X] Dynamic tags (<component is="...">)
+	- [X] Template tags
 - [ ] Attributes and props
 	- [X] Static attributes
 	- [X] Boolean attributes
@@ -17,7 +18,7 @@
 	- [X] v-else
 	- [ ] v-for
 	- [X] v-on / @ (events)
-	- [ ] Event modifiers
+		- [ ] Event modifiers
 - [ ] Slots
 	- [ ] Default slot
 	- [ ] Named
