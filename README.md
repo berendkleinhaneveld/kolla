@@ -6,7 +6,7 @@ Reactive user interfaces.
 
 Unholy marriage of concepts from [Svelte](https://svelte.dev), [Vue](https://vuejs.org) and [Collagraph](https://github.com/fork-tongue/collagraph).
 
-* No-virtual DOM approach from Svelte
+* 'No virtual DOM approach' from Svelte
 * Syntax for SFC (`.kolla`) from Vue
 * Renderers from Collagraph (PySide6, Pygfx, PyScript)
 
@@ -74,3 +74,21 @@ Currently there are four renderers:
 * [DictRenderer](kolla/renderers/dict_renderer.py): for testing purposes
 
 It is possible to create a custom `Renderer` using the [Renderer](kolla/renderers/__init__.py) interface, to render to other UI frameworks, for instance [wxPython](https://wxpython.org) and [GTK](https://pygobject.readthedocs.io/en/latest/) or any other dynamic tree-like structure that you can think of.
+
+
+## Notable differences from Vue
+
+The root template tag is not required for components and can have multiple elements:
+
+```html
+<widget>
+</widget>
+<button />
+
+<script>
+import kolla
+
+class Example(Component):
+    pass
+</script>
+```
