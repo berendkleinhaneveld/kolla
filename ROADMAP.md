@@ -28,4 +28,4 @@
 	- [ ] before_unmount
 - [ ] Component events / emit
 - [ ] Render callback
-- [ ] Provide / inject
+- [ ] Provide / inject (setContext, getContext)
