@@ -30,8 +30,9 @@ pre-commit = "*"
 pytest = "*"
 pytest-cov = "*"
 pytest-qt = "*"
+pytest-random-order = "*"
 pytest-xvfb = "*"
-rich = {version = "^12.5.1", python = "<4.0"}
+rich = {version = "*", python = "<4.0"}
 
 [tool.coverage.run]
 omit = [
