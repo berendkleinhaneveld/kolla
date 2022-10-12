@@ -1,23 +1,23 @@
 # Roadmap
 
 - [ ] Tags
-	- [X] Static tags
+	- [ ] Static tags
 	- [ ] Component tags
-	- [X] Dynamic tags (<component is="...">)
-	- [X] Template tags
+	- [ ] Dynamic tags (<component is="...">)
+	- [ ] Template tags
 - [ ] Attributes and props
-	- [X] Static attributes
-	- [X] Boolean attributes
+	- [ ] Static attributes
+	- [ ] Boolean attributes
 	- [ ] Bound attributes
-		- [X] Single attributes (v-bind: / :)
+		- [ ] Single attributes (v-bind: / :)
 		- [ ] Bound dicts/objects (v-bind)
 - [ ] Text expressions
 - [ ] Directives
-	- [X] v-if
-	- [X] v-else-if
-	- [X] v-else
+	- [ ] v-if
+	- [ ] v-else-if
+	- [ ] v-else
 	- [ ] v-for
-	- [X] v-on / @ (events)
+	- [ ] v-on / @ (events)
 		- [ ] Event modifiers
 - [ ] Slots
 	- [ ] Default slot
