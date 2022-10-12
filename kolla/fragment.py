@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 from enum import Enum
+from itertools import zip_longest
 from typing import Any, Callable
 from weakref import ref
 
@@ -138,6 +140,9 @@ class Fragment:
             if child.element:
                 return child.element
 
+    def patch(self, context):
+        pass
+
     def anchor(self, other: "Fragment") -> "Fragment":
         """
         Returns the fragment that serves as anchor for the
@@ -161,7 +166,6 @@ class ControlFlowFragment(Fragment):
         self.target = target
 
         def active_child():
-            # breakpoint()
             for child in self.children:
                 if hasattr(child, "condition"):
                     if child.condition():
@@ -171,8 +175,6 @@ class ControlFlowFragment(Fragment):
 
         def update_fragment(new, old):
             if old:
-                print("unmounting:", old)
-                print("mounting:", new)
                 old.unmount()
             if new:
                 if self.parent:
@@ -223,17 +225,29 @@ class ListFragment(Fragment):
 
         def update_list(items):
             # TODO: adjust method based on keyed/unkeyed
-            if not self.children:
+            if self.children:
+                for child, item in zip_longest(self.children, items):
+                    if child and item:
+                        # TODO: generate patch closures for each fragment
+                        #       in the sfc
+                        child.patch(item)
+                    elif child:
+                        # item is None
+                        child.unmount()
+                    elif item:
+                        # child is None:
+                        fragment = self.create_fragment(item)
+                        self.children.append(fragment)
+                        fragment.parent = self
+                        fragment.mount(target)
+            else:
                 for context in items:
                     fragment = self.create_fragment(context)
                     self.children.append(fragment)
                     fragment.parent = self
-            else:
-                # TODO: handle existing fragments
-                pass
 
-            for child in self.children:
-                child.mount(target)
+                for child in self.children:
+                    child.mount(target)
 
         self._watchers["list"] = watch(
             self.expression,
