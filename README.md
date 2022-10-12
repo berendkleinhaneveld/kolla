@@ -7,7 +7,7 @@ Reactive user interfaces.
 Unholy marriage of concepts from [Svelte](https://svelte.dev), [Vue](https://vuejs.org) and [Collagraph](https://github.com/fork-tongue/collagraph).
 
 * 'No virtual DOM approach' from Svelte
-* Syntax for SFC (`.kolla`) from Vue
+* Template Syntax for SFC (`.kolla`) from Vue (with scripting that looks more like Svelte)
 * Renderers from Collagraph (PySide6, Pygfx, PyScript)
 
 
@@ -38,15 +38,11 @@ source = """
 </widget>
 
 <script>
-import kolla
+count = 0
 
-class Counter(kolla.Component):
-    def __init__(self, props):
-        super().__init__(props)
-        self.state["count"] = 0
-
-    def bump(self):
-        self.state["count"] += 1
+def bump():
+    global count
+    count += 1
 </script>
 """
 Counter, module = sfc.load_from_string(source)
@@ -82,13 +78,13 @@ The root template tag is not required for components and can have multiple eleme
 
 ```html
 <widget>
+  <label :text="text" />
 </widget>
 <button />
 
 <script>
-import kolla
-
-class Example(Component):
-    pass
+text = "Hello world!"
 </script>
 ```
+
+For static components, the script tag is not needed. When you need values in your template, you can just declare them in the script scope. All imported and declared values can be used in the template.
