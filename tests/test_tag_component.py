@@ -7,6 +7,7 @@ from kolla.renderers import DictRenderer
 
 @pytest.mark.xfail
 def test_component_tag(parse_source):
+    # TODO: rewrite
     App, _ = parse_source(
         """
         <SubComponent />
@@ -49,6 +50,7 @@ def test_component_tag(parse_source):
 
 @pytest.mark.xfail
 def test_component_tag_props(parse_source):
+    # TODO: rewrite
     App, _ = parse_source(
         """
         <SubComponent

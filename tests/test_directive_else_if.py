@@ -1,9 +1,11 @@
 from observ import reactive
+import pytest
 
 from kolla import Kolla, EventLoopType
 from kolla.renderers import DictRenderer
 
 
+@pytest.mark.xfail
 def test_directive_else_if_root(parse_source):
     App, _ = parse_source(
         """
@@ -11,10 +13,8 @@ def test_directive_else_if_root(parse_source):
         <bar v-else-if="bar" />
 
         <script>
-        import kolla
-
-        class App(kolla.Component):
-            pass
+        foo = True
+        bar = True
         </script>
         """
     )
@@ -54,6 +54,7 @@ def test_directive_else_if_root(parse_source):
     assert container["children"][0]["type"] == "bar"
 
 
+@pytest.mark.xfail
 def test_directive_else_if_surrounded(parse_source):
     App, _ = parse_source(
         """
@@ -63,10 +64,8 @@ def test_directive_else_if_surrounded(parse_source):
         <after />
 
         <script>
-        import kolla
-
-        class App(kolla.Component):
-            pass
+        foo = True
+        bar = True
         </script>
         """
     )
@@ -118,6 +117,7 @@ def test_directive_else_if_surrounded(parse_source):
     assert container["children"][2]["type"] == "after"
 
 
+@pytest.mark.xfail
 def test_directive_else_if_combined(parse_source):
     App, _ = parse_source(
         """
@@ -127,10 +127,7 @@ def test_directive_else_if_combined(parse_source):
         <boa v-else-if="boa" />
 
         <script>
-        import kolla
-
-        class App(kolla.Component):
-            pass
+        foo = bar = baz = boa = True
         </script>
         """
     )

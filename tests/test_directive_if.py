@@ -1,19 +1,18 @@
 from observ import reactive
+import pytest
 
 from kolla import Kolla, EventLoopType
 from kolla.renderers import DictRenderer
 
 
+@pytest.mark.xfail
 def test_directive_if_root(parse_source):
     App, _ = parse_source(
         """
         <app v-if="foo" />
 
         <script>
-        import kolla
-
-        class App(kolla.Component):
-            pass
+        foo = True
         </script>
         """
     )
@@ -38,6 +37,7 @@ def test_directive_if_root(parse_source):
     assert "children" not in container
 
 
+@pytest.mark.xfail
 def test_directive_if_nested(parse_source):
     App, _ = parse_source(
         """
@@ -46,10 +46,7 @@ def test_directive_if_nested(parse_source):
         </app>
 
         <script>
-        import kolla
-
-        class App(kolla.Component):
-            pass
+        foo = True
         </script>
         """
     )
@@ -76,18 +73,16 @@ def test_directive_if_nested(parse_source):
     assert "children" not in app
 
 
+@pytest.mark.xfail
 def test_directive_if_with_children(parse_source):
     App, _ = parse_source(
         """
         <app v-if="foo">
-          <item text="foo" />
+          <item text="bar" />
         </app>
 
         <script>
-        import kolla
-
-        class App(kolla.Component):
-            pass
+        foo = True
         </script>
         """
     )
@@ -108,13 +103,14 @@ def test_directive_if_with_children(parse_source):
     assert app["type"] == "app"
     assert len(app["children"]) == 1
     assert app["children"][0]["type"] == "item"
-    assert app["children"][0]["attrs"]["text"] == "foo"
+    assert app["children"][0]["attrs"]["text"] == "bar"
 
     state["foo"] = False
 
     assert "children" not in container
 
 
+@pytest.mark.xfail
 def test_directive_if_surrounded(parse_source):
     App, _ = parse_source(
         """
@@ -123,10 +119,7 @@ def test_directive_if_surrounded(parse_source):
         <after />
 
         <script>
-        import kolla
-
-        class App(kolla.Component):
-            pass
+        foo = True
         </script>
         """
     )

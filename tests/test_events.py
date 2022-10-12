@@ -1,7 +1,10 @@
+import pytest
+
 from kolla import Kolla, EventLoopType
 from kolla.renderers import DictRenderer
 
 
+@pytest.mark.xfail
 def test_reactive_element_with_events(parse_source):
     App, _ = parse_source(
         """
@@ -11,15 +14,11 @@ def test_reactive_element_with_events(parse_source):
         />
 
         <script>
-        import kolla
+        count = 0
 
-        class App(kolla.Component):
-            def __init__(self, props):
-                super().__init__(props)
-                self.state["count"] = 0
-
-            def bump(self):
-                self.state["count"] += 1
+        def bump():
+            global count
+            count += 1
         </script>
         """
     )

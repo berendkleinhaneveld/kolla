@@ -1,10 +1,11 @@
-import pytest
 from observ import reactive
+import pytest
 
 from kolla import Kolla, EventLoopType
 from kolla.renderers import DictRenderer
 
 
+@pytest.mark.xfail
 def test_for_simple(parse_source):
     """Render a node with a 1_000 children.
     This test makes sure that `kolla` will not trigger a RecursionError.
@@ -16,13 +17,6 @@ def test_for_simple(parse_source):
           v-for="i in range({number_of_items})"
           :value="i"
         />
-
-        <script>
-        import kolla
-
-        class App(kolla.Component):
-            pass
-        </script>
         """
     )
 
@@ -38,99 +32,93 @@ def test_for_simple(parse_source):
         assert child["attrs"]["value"] == idx
 
 
+@pytest.mark.xfail
 def test_for_with_children(parse_source):
-    values = ["a", "b", "c"]
     App, _ = parse_source(
-        f"""
+        """
         <node
-          v-for="i, text in enumerate({values})"
+          v-for="i, text in enumerate(values)"
           :value="i"
         >
           <item :text="text" />
         </node>
 
         <script>
-        import kolla
-
-        class App(kolla.Component):
-            pass
+        values = []
         </script>
         """
     )
 
+    state = {"values": ["a", "b", "c"]}
     container = {"type": "root"}
     gui = Kolla(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )
-    gui.render(App, container)
+    gui.render(App, container, state=state)
 
-    assert len(container["children"]) == len(values), container
+    assert len(container["children"]) == len(state["values"]), container
     for idx, child in enumerate(container["children"]):
         assert child["attrs"]["value"] == idx
-        assert child["children"][0]["attrs"]["text"] == values[idx]
+        assert child["children"][0]["attrs"]["text"] == state["values"][idx]
 
 
+@pytest.mark.xfail
 def test_for_between_other_tags(parse_source):
-    """Render a node with a 1000 children.
-
-    When using a recursive strategy to process fibers, this will result in a
-    stack of 1000 calls to `commit_work` which triggers a RecursionError.
-    This test makes sure that `kolla` will not trigger any RecursionError.
-    """
     App, _ = parse_source(
         """
         <foo />
         <node
-          v-for="i in range(10)"
+          v-for="i in range(count)"
           :value="i"
         />
         <bar />
 
         <script>
-        import kolla
-
-        class App(kolla.Component):
-            pass
+        count = 0
         </script>
         """
     )
 
     container = {"type": "root"}
+    state = reactive({"count": 10})
     gui = Kolla(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )
-    gui.render(App, container)
+    gui.render(App, container, state=state)
 
     assert len(container["children"]) == 12
     assert container["children"][0]["type"] == "foo"
     assert container["children"][-1]["type"] == "bar"
 
-    # TODO: add tests for response to changes in size of v-for
+    state["count"] = 12
+
+    assert len(container["children"]) == 14
+    assert container["children"][0]["type"] == "foo"
+    assert container["children"][-1]["type"] == "bar"
+
+    state["count"] = 4
+
+    assert len(container["children"]) == 6
+    assert container["children"][0]["type"] == "foo"
+    assert container["children"][-1]["type"] == "bar"
 
 
+@pytest.mark.xfail
 def test_for_between_if_tags(parse_source):
-    """Render a node with a 1000 children.
-
-    When using a recursive strategy to process fibers, this will result in a
-    stack of 1000 calls to `commit_work` which triggers a RecursionError.
-    This test makes sure that `kolla` will not trigger any RecursionError.
-    """
     App, _ = parse_source(
         """
         <foo v-if="foo" />
         <node
-          v-for="i in range(10)"
+          v-for="i in range(count)"
           :value="i"
         />
         <bar v-if="bar" />
 
         <script>
-        import kolla
-
-        class App(kolla.Component):
-            pass
+        foo = bar = True
+        count = 0
         </script>
         """
     )
@@ -139,6 +127,7 @@ def test_for_between_if_tags(parse_source):
         {
             "foo": False,
             "bar": False,
+            "count": 10,
         }
     )
     container = {"type": "root"}
@@ -164,6 +153,7 @@ def test_for_between_if_tags(parse_source):
     assert container["children"][11]["type"] == "bar"
 
 
+@pytest.mark.xfail
 def test_for_reactive(parse_source):
     App, _ = parse_source(
         """
@@ -173,10 +163,7 @@ def test_for_reactive(parse_source):
         />
 
         <script>
-        import kolla
-
-        class App(kolla.Component):
-            pass
+        items = []
         </script>
         """
     )
@@ -207,27 +194,32 @@ def test_for_keyed(parse_source):
 
     App, _ = parse_source(
         """
-        <app>
-          <node
-            v-for="i in range(1000)"
-            :key="i"
-          />
-        </app>
+        <node
+          v-for="i in items"
+          :key="i"
+          :value="i"
+        />
 
         <script>
-        import kolla
-
-        class App(kolla.Component):
-            pass
+        items = []
         </script>
         """
     )
 
+    state = reactive({"items": ["a", "b"]})
     container = {"type": "root"}
     gui = Kolla(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )
-    gui.render(App, container)
+    gui.render(App, container, state=state)
 
-    assert len(container["children"][0]["children"]) == 1000
+    assert len(container["children"]) == len(state["items"])
+    for idx, item in enumerate(state["items"]):
+        assert container["children"][idx]["attrs"]["value"] == item
+
+    state["items"].append("c")
+
+    assert len(container["children"]) == len(state["items"])
+    for idx, item in enumerate(state["items"]):
+        assert container["children"][idx]["attrs"]["value"] == item

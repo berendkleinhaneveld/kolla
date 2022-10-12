@@ -5,17 +5,57 @@ from kolla import Kolla, EventLoopType
 from kolla.renderers import DictRenderer
 
 
-def test_dynamic_attribute_object_method(parse_source):
+@pytest.mark.xfail
+def test_dynamic_attribute_prop(parse_source):
+    App, _ = parse_source(
+        """
+        <app :foo="bar" />
+
+        <script>
+        bar = "baz"
+        </script>
+        """
+    )
+
+    container = {"type": "root"}
+    gui = Kolla(
+        renderer=DictRenderer(),
+        event_loop_type=EventLoopType.SYNC,
+    )
+    gui.render(App, container)
+
+    app = container["children"][0]
+    assert app["attrs"]["foo"] == "baz"
+
+
+@pytest.mark.xfail
+def test_dynamic_attribute_value(parse_source):
+    App, _ = parse_source(
+        """
+        <app :foo="420" />
+        """
+    )
+
+    container = {"type": "root"}
+    gui = Kolla(
+        renderer=DictRenderer(),
+        event_loop_type=EventLoopType.SYNC,
+    )
+    gui.render(App, container)
+
+    app = container["children"][0]
+    assert app["attrs"]["foo"] == 420
+
+
+@pytest.mark.xfail
+def test_dynamic_attribute_function(parse_source):
     App, _ = parse_source(
         """
         <app v-bind:foo="bar()" />
 
         <script>
-        import kolla
-
-        class App(kolla.Component):
-            def bar(self):
-                return "baz"
+        def bar():
+            return "baz"
         </script>
         """
     )
@@ -31,135 +71,48 @@ def test_dynamic_attribute_object_method(parse_source):
     assert app["attrs"]["foo"] == "baz"
 
 
-def test_dynamic_attribute_object_property(parse_source):
-    App, _ = parse_source(
-        """
-        <app :foo="bar" />
+@pytest.mark.xfail
+def test_dynamic_attribute_undefined_prop(parse_source):
+    with pytest.raises(Exception):
+        parse_source(
+            """
+            <app :foo="bar" />
 
-        <script>
-        import kolla
-
-        class App(kolla.Component):
-            def __init__(self, props):
-                super().__init__(props)
-                self.bar = "baz"
-        </script>
-        """
-    )
-
-    container = {"type": "root"}
-    gui = Kolla(
-        renderer=DictRenderer(),
-        event_loop_type=EventLoopType.SYNC,
-    )
-    gui.render(App, container)
-
-    app = container["children"][0]
-    assert app["attrs"]["foo"] == "baz"
+            <!--
+             bar is not defined, so even when bar
+             is passed in as a prop, it should result
+             in an error during compilation already
+            -->
+            """
+        )
 
 
-def test_dynamic_attribute_module_scope(parse_source):
-    App, _ = parse_source(
-        """
-        <app :foo="bar" />
-
-        <script>
-        import kolla
-
-        bar = "baz"
-
-        class App(kolla.Component):
-            pass
-        </script>
-        """
-    )
-
-    container = {"type": "root"}
-    gui = Kolla(
-        renderer=DictRenderer(),
-        event_loop_type=EventLoopType.SYNC,
-    )
-    gui.render(App, container)
-
-    app = container["children"][0]
-    assert app["attrs"]["foo"] == "baz"
-
-
-def test_dynamic_attribute_state(parse_source):
-    App, _ = parse_source(
-        """
-        <app :foo="bar" />
-
-        <script>
-        import kolla
-
-        class App(kolla.Component):
-            def __init__(self, props):
-                super().__init__(props)
-                self.state["bar"] = "baz"
-        </script>
-        """
-    )
-
-    container = {"type": "root"}
-    gui = Kolla(
-        renderer=DictRenderer(),
-        event_loop_type=EventLoopType.SYNC,
-    )
-    gui.render(App, container)
-
-    app = container["children"][0]
-    assert app["attrs"]["foo"] == "baz"
-
-
-def test_dynamic_attribute_props(parse_source):
-    App, _ = parse_source(
-        """
-        <app :foo="bar" />
-
-        <script>
-        import kolla
-
-        class App(kolla.Component):
-            pass
-        </script>
-        """
-    )
-
-    container = {"type": "root"}
-    gui = Kolla(
-        renderer=DictRenderer(),
-        event_loop_type=EventLoopType.SYNC,
-    )
-    gui.render(App, container, state={"bar": "baz"})
-
-    app = container["children"][0]
-    assert app["attrs"]["foo"] == "baz"
-
-
+@pytest.mark.xfail
 def test_dynamic_attribute_props_change(parse_source):
     App, _ = parse_source(
         """
         <app :foo="bar" />
 
         <script>
-        import kolla
-
-        class App(kolla.Component):
-            pass
+        bar = "bla"
         </script>
         """
     )
 
-    state = reactive({"bar": "baz"})
+    # state = reactive({"bar": "baz"})
+    state = reactive({})
     container = {"type": "root"}
     gui = Kolla(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )
     gui.render(App, container, state=state)
-
     app = container["children"][0]
+
+    assert app["attrs"]["foo"] == "bla"
+
+    state["bar"] = "baz"
+
     assert app["attrs"]["foo"] == "baz"
 
     state["bar"] = "bam"
@@ -174,10 +127,7 @@ def test_dynamic_attribute_object(parse_source):
         <app v-bind="values" />
 
         <script>
-        import kolla
-
-        class App(kolla.Component):
-            pass
+        values = {}
         </script>
         """
     )

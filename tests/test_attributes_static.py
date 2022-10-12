@@ -7,14 +7,7 @@ from kolla.renderers import DictRenderer
 def test_static_attributes(parse_source):
     App, _ = parse_source(
         """
-        <app foo="bar" baz />
-
-        <script>
-        import kolla
-
-        class App(kolla.Component):
-            pass
-        </script>
+        <app foo="bar" />
         """
     )
 
@@ -27,7 +20,6 @@ def test_static_attributes(parse_source):
 
     app = container["children"][0]
     assert app["attrs"]["foo"] == "bar"
-    assert app["attrs"]["baz"] is True
 
 
 def test_static_attributes_nested_elements(parse_source):
@@ -36,13 +28,6 @@ def test_static_attributes_nested_elements(parse_source):
         <app foo="bar">
           <item text="baz" />
         </app>
-
-        <script>
-        import kolla
-
-        class App(kolla.Component):
-            pass
-        </script>
         """
     )
 
@@ -65,13 +50,6 @@ def test_static_integer_attribute(parse_source):
     App, _ = parse_source(
         """
         <app foo=2 />
-
-        <script>
-        import kolla
-
-        class App(kolla.Component):
-            pass
-        </script>
         """
     )
 
@@ -90,13 +68,6 @@ def test_static_bool_attribute(parse_source):
     App, _ = parse_source(
         """
         <app foo />
-
-        <script>
-        import kolla
-
-        class App(kolla.Component):
-            pass
-        </script>
         """
     )
 

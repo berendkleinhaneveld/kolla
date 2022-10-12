@@ -5,14 +5,7 @@ from kolla.renderers import DictRenderer
 def test_simple_tree(parse_source):
     App, _ = parse_source(
         """
-        <app/>
-
-        <script>
-        import kolla
-
-        class App(kolla.Component):
-            pass
-        </script>
+        <app />
         """
     )
 
@@ -36,13 +29,6 @@ def test_hierarchical_tree(parse_source):
             <grand-child />
           </child>
         </parent>
-
-        <script>
-        import kolla
-
-        class App(kolla.Component):
-            pass
-        </script>
         """
     )
 
@@ -67,13 +53,6 @@ def test_tree_with_multiple_roots(parse_source):
         """
         <item />
         <other />
-
-        <script>
-        import kolla
-
-        class App(kolla.Component):
-            pass
-        </script>
         """
     )
 
