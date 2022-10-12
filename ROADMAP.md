@@ -30,3 +30,6 @@
 - [ ] Component events / emit
 - [ ] Render callback
 - [ ] Provide / inject (setContext, getContext)
+- [ ] Compile to file
+	- [ ] Auto-update when .kolla file changed
+- [ ] Directly run `.kolla` files:
