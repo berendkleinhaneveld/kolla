@@ -8,7 +8,7 @@
 - [ ] Attributes and props
 	- [ ] Static attributes
 	- [ ] Boolean attributes
-	- [ ] Bound attributes
+	- [ ] Dynamic (bound) attributes
 		- [ ] Single attributes (v-bind: / :)
 		- [ ] Bound dicts/objects (v-bind)
 - [ ] Text expressions
@@ -27,6 +27,7 @@
 	- [ ] mounted
 	- [ ] updated
 	- [ ] before_unmount
+- [ ] Refs to DOM nodes (bind:this)
 - [ ] Component events / emit
 - [ ] Render callback
 - [ ] Provide / inject (setContext, getContext)

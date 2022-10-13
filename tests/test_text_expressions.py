@@ -48,7 +48,7 @@ def test_dynamic_text(parse_source):
     App, _ = parse_source(
         """
         <p>
-          {{ message }}
+          prefix {{ message }} { message } suffix
         </p>
 
         <script>
@@ -67,8 +67,14 @@ def test_dynamic_text(parse_source):
 
     paragraph = container["children"][0]
     assert paragraph["type"] == "p"
-    assert paragraph["children"][0] == {"type": "TEXT_ELEMENT", "text": "Hello"}
+    assert paragraph["children"][0] == {
+        "type": "TEXT_ELEMENT",
+        "text": "prefix Hello { message } suffix",
+    }
 
     state["message"] = "foo"
 
-    assert paragraph["children"][0] == {"type": "TEXT_ELEMENT", "text": "foo"}
+    assert paragraph["children"][0] == {
+        "type": "TEXT_ELEMENT",
+        "text": "prefix foo { message } suffix",
+    }
