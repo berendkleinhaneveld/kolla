@@ -25,7 +25,7 @@ Here is an example that shows a simple counter:
 ```python
 from PySide6 import QtWidgets
 import kolla
-from kolla.sfc import sfc
+from kolla import sfc
 
 # The source normally resides in a .kolla file
 # which can be imported like any other python file

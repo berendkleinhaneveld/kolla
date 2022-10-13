@@ -1,6 +1,6 @@
 import pytest
 
-from kolla import Kolla, EventLoopType
+from kolla import EventLoopType, Kolla
 from kolla.renderers import DictRenderer
 
 

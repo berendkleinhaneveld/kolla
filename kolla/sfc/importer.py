@@ -2,7 +2,10 @@ from importlib.machinery import ModuleSpec
 import pathlib
 import sys
 
-from . import sfc
+from . import load
+
+
+SUFFIX = "kolla"
 
 
 class KollaImporter:
@@ -19,7 +22,7 @@ class KollaImporter:
             return target.__spec__
 
         package, _, module_name = name.rpartition(".")
-        sfc_file_name = f"{module_name}.{sfc.SUFFIX}"
+        sfc_file_name = f"{module_name}.{SUFFIX}"
         directories = sys.path if path is None else path
         for directory in directories:
             sfc_path = pathlib.Path(directory) / sfc_file_name
@@ -34,7 +37,7 @@ class KollaImporter:
 
     def exec_module(self, module):
         """Executing the module means reading the kolla file"""
-        component, context = sfc.load(self.sfc_path)
+        component, context = load(self.sfc_path)
         # Add the default module keys to the context such that
         # __file__, __name__ and such are available to the loaded module
         context.update(module.__dict__)

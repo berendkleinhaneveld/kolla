@@ -1,9 +1,7 @@
 import ast
 from collections import defaultdict
-import logging
-
-# import inspect
 from html.parser import HTMLParser
+import logging
 from pathlib import Path
 import re
 import sys
@@ -19,7 +17,6 @@ logger = logging.getLogger(__name__)
 # Defaults to True, except when it is part of an installed application
 KOLLA_RUNTIME_WARNINGS = not getattr(sys, "frozen", False)
 
-SUFFIX = "kolla"
 DIRECTIVE_PREFIX = "v-"
 DIRECTIVE_BIND = f"{DIRECTIVE_PREFIX}bind"
 DIRECTIVE_IF = f"{DIRECTIVE_PREFIX}if"
@@ -755,6 +752,6 @@ def _print_ast_tree_as_code(tree):  # pragma: no cover
         syntax = Syntax(result, "python")
         console.print(syntax)  # noqa: T201
     except black.parsing.InvalidInput:
-        print(plain_result)
+        print(plain_result)  # noqa: T201
     except TypeError:
         pass

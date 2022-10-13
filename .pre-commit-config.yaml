@@ -25,3 +25,9 @@ repos:
     files: \.(py|kolla)$
     require_serial: true
     pass_filenames: false
+  - id: isort
+    name: isort
+    entry: poetry run isort --check
+    language: system
+    types: [python]
+    require_serial: true

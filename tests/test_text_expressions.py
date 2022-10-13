@@ -1,6 +1,7 @@
+from observ import reactive
 import pytest
 
-from kolla import Kolla, EventLoopType
+from kolla import EventLoopType, Kolla
 from kolla.renderers import DictRenderer
 
 

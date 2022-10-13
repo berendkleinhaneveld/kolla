@@ -1,9 +1,9 @@
 from observ import scheduler
 from PySide6 import QtWidgets
 
-import kolla
 
-from examples.counter import Counter
+import kolla  # isort: split
+from examples.counter import Counter  # noqa: I100
 
 
 # class Counter(kolla.Component):

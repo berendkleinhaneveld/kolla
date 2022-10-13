@@ -1,14 +1,10 @@
 import logging
 
-from PySide6.QtWidgets import (
-    QBoxLayout,
-    QFormLayout,
-    QGridLayout,
-    QWidget,
-)
+from PySide6.QtWidgets import QBoxLayout, QFormLayout, QGridLayout, QWidget
 
 from .qobject import set_attribute as qobject_set_attribute
 from ..utils import attr_name_to_method_name, call_method
+
 
 logger = logging.getLogger(__name__)
 
