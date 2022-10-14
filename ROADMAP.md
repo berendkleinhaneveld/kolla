@@ -28,6 +28,9 @@
 	- [ ] updated
 	- [ ] before_unmount
 - [ ] Refs to DOM nodes (bind:this)
+	- [ ] Refs inside v-for
+	- [ ] Function refs (dynamic refs)
+	- [ ] Component ref
 - [ ] Component events / emit
 - [ ] Render callback
 - [ ] Provide / inject (setContext, getContext)
