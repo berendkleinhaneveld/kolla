@@ -5,6 +5,9 @@ import textwrap
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
 
+import ast_scope
+from rich import print
+
 DIRECTIVE_PREFIX = "v-"
 DIRECTIVE_BIND = f"{DIRECTIVE_PREFIX}bind"
 DIRECTIVE_IF = f"{DIRECTIVE_PREFIX}if"
@@ -67,7 +70,6 @@ class KollaParser(HTMLParser):
         # Cast attributes that have no value to boolean (True)
         # so that they function like flags
         for key, value in node.attrs.items():
-            # TODO: check if the value should actually be an integer
             if value is None:
                 node.attrs[key] = True
 
@@ -77,20 +79,27 @@ class KollaParser(HTMLParser):
         self.stack.append(node)
 
     def handle_endtag(self, tag):
-        # TODO: pop it till popping the same tag in order to
-        # work around unclosed tags?
         # Pop the stack
         node = self.stack.pop()
+        assert tag == node.tag
         node.end = self.getpos()
 
     def handle_data(self, data):
-        if data.strip():
-            self.stack[-1].data = data.strip()
+        if data := data.strip():
+            self.stack[-1].data = data
 
 
 @dataclass
 class Expression:
-    content: ast.Module | ast.Expression
+    content: ast.Expression
+
+    def __repr__(self):
+        return "Expression"
+
+
+@dataclass
+class Script:
+    content: ast.Module
 
     def __repr__(self):
         return "Expression"
@@ -130,7 +139,7 @@ def parse(source):
     def parse_element(el: Node):
         if el.tag == "script":
             script = ast.parse(el.data, mode="exec")
-            return Expression(content=script)
+            return Script(content=script)
         element = Element(el.tag)
         for key, value in el.attrs.items():
             if key.startswith((":", "@", "v-")):
@@ -145,7 +154,76 @@ def parse(source):
     parser = KollaParser()
     parser.feed(source)
     elements = [parse_element(el) for el in parser.root.children]
-    return elements
+    root = Node("root")
+    root.children = elements
+    return root
+
+
+def traverse(tree, result):
+    if hasattr(tree, "children"):
+        for child in tree.children:
+            traverse(child, result)
+    if hasattr(tree, "attributes"):
+        for attr in tree.attributes:
+            traverse(attr, result)
+
+    # breakpoint()
+    if isinstance(tree, Element):
+        for attr in tree.attributes:
+            if isinstance(attr.value, Expression):
+                scope_info = ast_scope.annotate(attr.value.content)
+                print(f"add: {scope_info.global_scope.symbols_in_frame}")
+                result["will_use_in_template"].update(
+                    scope_info.global_scope.symbols_in_frame
+                )
+
+
+class NodeTraverser(ast.NodeVisitor):
+    def __init__(self, scope_info):
+        super().__init__()
+        self.scope_info = scope_info
+        self.result = set()
+        self.depth = 0
+
+    def generic_visit(self, node):
+        # Increase scope depth when entering functions
+        if isinstance(node, ast.FunctionDef):
+            self.depth += 1
+
+        if self.depth > 0 and hasattr(node, "ctx"):
+            if isinstance(node.ctx, ast.Store):
+                # Variables have to be marked 'global'
+                if self.scope_info[node] == self.scope_info.global_scope:
+                    self.result.add(node.id)
+
+        super().generic_visit(node)
+
+        if isinstance(node, ast.FunctionDef):
+            self.depth -= 1
+
+
+def analyse(tree):
+    script = [element for element in tree.children if isinstance(element, Script)][0]
+    assert script
+
+    scope_info = ast_scope.annotate(script.content)
+
+    variables = scope_info.global_scope.symbols_in_frame
+
+    trav = NodeTraverser(scope_info)
+    trav.visit(script.content)
+
+    result = {
+        "variables": variables,
+        "will_change": trav.result,
+        "will_use_in_template": set(),
+    }
+    traverse(tree, result)
+    return result
+
+
+def generate(tree, analysis):
+    pass
 
 
 if __name__ == "__main__":
@@ -157,6 +235,7 @@ if __name__ == "__main__":
         </widget>
 
         <script>
+        from PySide6 import QtWidgets
         count = 0
 
         def bump():
@@ -167,3 +246,8 @@ if __name__ == "__main__":
     )
 
     tree = parse(source)
+
+    analysis = analyse(tree)
+    print(analysis)
+
+    code = generate(tree, analysis)
