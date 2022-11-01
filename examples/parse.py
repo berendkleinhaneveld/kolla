@@ -885,7 +885,7 @@ if __name__ == "__main__":
     source = textwrap.dedent(
         """
         <widget>
-          <label :text="count" />
+          <label :text="f'Clicked: {count}'" />
           <button text="Bump" @clicked="bump" />
         </widget>
 
