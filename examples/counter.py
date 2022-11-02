@@ -1,6 +1,7 @@
 from PySide6 import QtWidgets
+
 import kolla
-from kolla.sfc import sfc
+from kolla import sfc
 
 # The source normally resides in a .kolla file
 # which can be imported like any other python file
@@ -13,24 +14,22 @@ source = """
 </widget>
 
 <script>
-import kolla
+count = 0
 
-class Counter(kolla.Component):
-    def __init__(self, props):
-        super().__init__(props)
-        self.state["count"] = 0
-
-    def bump(self):
-        self.state["count"] += 1
+def bump(self):
+    global count
+    count += 1
 </script>
 """
-Counter, module = sfc.load_from_string(source)
+Counter, module = sfc.load_from_string(source, "Counter")
 
 # Create a Kolla instance with a PySide renderer
 # and register with the Qt event loop
 gui = kolla.Kolla(
     renderer=kolla.PySideRenderer(),
     event_loop_type=kolla.EventLoopType.QT,
+    # event_loop_type=kolla.EventLoopType.ASYNC,
+    # event_loop_type=kolla.EventLoopType.SYNC,
 )
 # Render the function component into a container
 # (in this case the app but can be another widget)
