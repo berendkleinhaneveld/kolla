@@ -178,6 +178,10 @@ def ast_create_fragment_function(tree, analysis):
     if not element_updates:
         element_updates.append(ast.Pass())
 
+    nonlocal_statement = [ast.Pass()]
+    if list(elements):
+        nonlocal_statement = [ast.Nonlocal(names=list(elements))]
+
     return ast.FunctionDef(
         name="create_fragment",
         args=ast.arguments(
@@ -213,7 +217,7 @@ def ast_create_fragment_function(tree, analysis):
                     defaults=[],
                 ),
                 body=[
-                    ast.Nonlocal(names=list(elements)),
+                    *nonlocal_statement,
                     *element_creations,
                     *element_set_attributes,
                 ],
