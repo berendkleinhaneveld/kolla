@@ -1,31 +1,10 @@
-class Scheduler:
-    def __init__(self):
-        self.queue = []
-
-    def add(self, component):
-        if component not in self.queue:
-            self.queue.append(component)
-
-    def flush(self):
-        while self.queue:
-            component = self.queue.pop(0)
-            component.flush_update()
-
-
-def schedule_update(component):
-    # SVELTE INTERNALS
-    scheduler.add(component)
-
-
-scheduler = Scheduler()
+from ..renderers import DictRenderer
 
 
 class Component:
     # SVELTE INTERNALS
     def __init__(self, options, instance, create_fragment, props=None, **kwargs):
         super().__init__()
-
-        from kolla.renderers import DictRenderer
 
         if props is None:
             props = {}
@@ -34,11 +13,12 @@ class Component:
             options = {}
 
         self.renderer = options.get("renderer", DictRenderer())
+        self.scheduler = options.get("scheduler", self.renderer.scheduler)
 
         def invalidate(variable, new_value):
             self.ctx[variable] = new_value
             self.dirty.add(variable)
-            schedule_update(self)
+            self.scheduler.add(self)
 
         self.ctx = instance(self, props, invalidate)
         self.fragment = create_fragment(self.ctx, self.renderer)

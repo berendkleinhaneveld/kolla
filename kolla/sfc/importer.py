@@ -1,8 +1,10 @@
-from importlib.machinery import ModuleSpec
 import pathlib
 import sys
+from importlib.machinery import ModuleSpec
 
-from . import sfc
+from . import analyser, generator, parser
+
+SUFFIX = ".kolla"
 
 
 class KollaImporter:
@@ -19,7 +21,7 @@ class KollaImporter:
             return target.__spec__
 
         package, _, module_name = name.rpartition(".")
-        sfc_file_name = f"{module_name}.{sfc.SUFFIX}"
+        sfc_file_name = f"{module_name}.{SUFFIX}"
         directories = sys.path if path is None else path
         for directory in directories:
             sfc_path = pathlib.Path(directory) / sfc_file_name
@@ -34,13 +36,31 @@ class KollaImporter:
 
     def exec_module(self, module):
         """Executing the module means reading the kolla file"""
-        component, context = sfc.load(self.sfc_path)
+
+        source = self.sfc_path.read_text(encoding="utf-8")
+        component_name = "".join(
+            [part.capitalize() for part in self.sfc_path.stem.split("_")]
+        )
+
+        tree = parser.parse(source)
+        analysis = analyser.analyse(tree)
+        generated_code = generator.generate(tree, analysis, component_name)
+
+        # Compile the tree into a code object (module)
+        code = compile(generated_code, filename=self.sfc_path, mode="exec")
+        # Execute the code as module and pass a dictionary that will capture
+        # the global and local scope of the module
+        # module_namespace = {}
+        exec(code, module)
+
+        # component = module_namespace[component_name]
+
         # Add the default module keys to the context such that
         # __file__, __name__ and such are available to the loaded module
-        context.update(module.__dict__)
+        # context.update(module.__dict__)
 
-        module.__dict__.update(context)
-        module.__dict__[component.__name__] = component
+        # module.__dict__.update(context)
+        # module.__dict__[component.__name__] = component
 
 
 # Add the Cgx importer at the end of the list of finders

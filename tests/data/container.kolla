@@ -1,0 +1,6 @@
+<container>
+  <slot />
+</container>
+
+<script>
+</script>

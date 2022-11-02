@@ -2,7 +2,10 @@
 name = "kolla"
 version = "0.5.2"
 description = "Reactive user interfaces"
-authors = ["Berend Klein Haneveld <berendkleinhaneveld@gmail.com>", "Korijn van Golen <korijn@gmail.com>"]
+authors = [
+	"Berend Klein Haneveld <berendkleinhaneveld@gmail.com>",
+	"Korijn van Golen <korijn@gmail.com>",
+]
 license = "MIT"
 homepage = "https://github.com/fork-tongue/kolla"
 readme = "README.md"
@@ -25,6 +28,7 @@ ast-scope = "*"
 black = "*"
 flake8 = "*"
 flake8-black = "*"
+flake8-isort = "*"
 flake8-print = "*"
 pre-commit = "*"
 pytest = "*"
@@ -32,16 +36,15 @@ pytest-cov = "*"
 pytest-qt = "*"
 pytest-random-order = "*"
 pytest-xvfb = "*"
-rich = {version = "*", python = "<4.0"}
+rich = { version = "*", python = "<4.0" }
 ruff = "^0.0.93"
-flake8-isort = "^5.0.0"
 
 [tool.coverage.run]
-omit = [
-	"tests/*",
-	"kolla/renderers/*"
-]
+omit = ["tests/*", "kolla/renderers/*"]
 
 [build-system]
 requires = ["poetry>=1.0.0"]
 build-backend = "poetry.masonry.api"
+
+[tool.isort]
+profile = "black"

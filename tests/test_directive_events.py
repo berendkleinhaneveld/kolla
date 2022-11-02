@@ -1,4 +1,4 @@
-from kolla import Kolla, EventLoopType
+from kolla import EventLoopType, Kolla
 from kolla.renderers import DictRenderer
 
 
@@ -11,15 +11,11 @@ def test_reactive_element_with_events(parse_source):
         />
 
         <script>
-        import kolla
+        count = 0
 
-        class App(kolla.Component):
-            def __init__(self, props):
-                super().__init__(props)
-                self.state["count"] = 0
-
-            def bump(self):
-                self.state["count"] += 1
+        def bump():
+            global count
+            count += 1
         </script>
         """
     )
@@ -37,7 +33,8 @@ def test_reactive_element_with_events(parse_source):
     assert count["attrs"]["count"] == 0
     assert len(count["handlers"]["bump"]) == 1
 
-    # Update state by triggering all listeners, which should trigger a re-render
+    # Update state by triggering all listeners, which should
+    # trigger a re-render
     for listener in count["handlers"]["bump"]:
         listener()
 
