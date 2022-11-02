@@ -1,7 +1,7 @@
 import ast
 from collections import defaultdict
 
-from .parser import DIRECTIVE_BIND, DIRECTIVE_ON, Element, is_directive
+from .parser import DIRECTIVE_BIND, DIRECTIVE_ON, Element, Text, is_directive
 
 
 def generate(tree, analysis, class_name):
@@ -63,6 +63,8 @@ def ast_create_fragment_function(tree, analysis):
     def gather_tags(element):
         if isinstance(element, Element):
             elements[numbered_tag(element.name)] = element
+        if isinstance(element, Text):
+            elements[numbered_tag("text")] = element
 
         if hasattr(element, "children"):
             for child in element.children:
@@ -78,18 +80,31 @@ def ast_create_fragment_function(tree, analysis):
         for el in elements
     ]
 
+    def create_call_for_element(element):
+        if isinstance(element, Text):
+            return ast.Call(
+                func=ast.Attribute(
+                    value=ast.Name(id="renderer", ctx=ast.Load()),
+                    attr="create_text_element",
+                    ctx=ast.Load(),
+                ),
+                args=[],
+                keywords=[],
+            )
+        return ast.Call(
+            func=ast.Attribute(
+                value=ast.Name(id="renderer", ctx=ast.Load()),
+                attr="create_element",
+                ctx=ast.Load(),
+            ),
+            args=[ast.Constant(value=element.name)],
+            keywords=[],
+        )
+
     element_creations = [
         ast.Assign(
             targets=[ast.Name(id=el, ctx=ast.Store())],
-            value=ast.Call(
-                func=ast.Attribute(
-                    value=ast.Name(id="renderer", ctx=ast.Load()),
-                    attr="create_element",
-                    ctx=ast.Load(),
-                ),
-                args=[ast.Constant(value=element.name)],
-                keywords=[],
-            ),
+            value=create_call_for_element(element),
         )
         for el, element in elements.items()
     ]
@@ -384,6 +399,26 @@ def numbered_tag(tag):
 def ast_set_attributes(el: str, element: Element, analysis):
     result = []
     event_listeners = []
+
+    if isinstance(element, Text):
+        result.append(
+            ast.Expr(
+                value=ast.Call(
+                    func=ast.Attribute(
+                        value=ast.Name(id="renderer", ctx=ast.Load()),
+                        attr="set_element_text",
+                        ctx=ast.Load(),
+                    ),
+                    args=[
+                        ast.Name(id=el, ctx=ast.Load()),
+                        ast.Constant(value=element.content),
+                    ],
+                    keywords=[],
+                )
+            )
+        )
+        # TODO: implement logic for combinations of Text and Element children
+        return result, event_listeners
 
     for attr in element.attributes:
         key = attr.name

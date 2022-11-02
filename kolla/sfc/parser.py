@@ -15,24 +15,26 @@ DIRECTIVE_ON = f"{DIRECTIVE_PREFIX}on"
 
 
 def parse(source):
-    def parse_element(el: Node, parent: Element):
-        if el.tag == "script":
-            script = ast.parse(el.data, mode="exec")
+    def parse_element(node: Node, parent: Element):
+        if node.tag == "script":
+            script = ast.parse(node.data, mode="exec")
             return Script(content=script)
-        element = Element(el.tag, parent=parent)
-        for key, value in el.attrs.items():
+        element = Element(node.tag, parent=parent)
+        for key, value in node.attrs.items():
             if is_directive(key):
                 expr = ast.parse(value, mode="eval")
                 value = Expression(content=expr)
             attribute = Attribute(key, value)
             element.attributes.append(attribute)
-        for child in el.children:
+        if node.data:
+            element.children.append(Text(content=node.data, parent=element))
+        for child in node.children:
             element.children.append(parse_element(child, element))
         return element
 
     parser = TemplateParser()
     parser.feed(source)
-    elements = [parse_element(el, parent=None) for el in parser.root.children]
+    elements = [parse_element(node, parent=None) for node in parser.root.children]
     root = Node("root")
     root.children = elements
     return root
@@ -140,6 +142,7 @@ class Script:
 @dataclass
 class Text:
     content: str
+    parent: "Element" = None
     type: str = "Text"
     children: [Expression] = field(default_factory=list)  # TODO
 

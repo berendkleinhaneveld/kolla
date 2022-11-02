@@ -23,7 +23,6 @@ def test_simple_text(parse_source):
     assert container["children"][0] == {"type": "TEXT_ELEMENT", "text": "Hello"}
 
 
-@pytest.mark.xfail
 def test_simple_text_in_tree(parse_source):
     App, _ = parse_source(
         """
