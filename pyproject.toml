@@ -22,7 +22,6 @@ pyside6_essentials = { version = "^6.3", python = "<3.11", optional = true }
 
 # TODO: add entry_point to be able to run kolla as module and render .kolla files directly
 # python -m kolla path/to/example.kolla
-ast-scope = "*"
 
 [tool.poetry.group.dev.dependencies]
 black = "*"

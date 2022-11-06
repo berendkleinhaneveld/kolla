@@ -1,19 +1,8 @@
 [[package]]
-name = "ast-scope"
-version = "0.3.1"
-description = "Annotates a Python AST with the scope of symbols."
-category = "main"
-optional = false
-python-versions = ">=3.5"
-
-[package.dependencies]
-attrs = "19.3.0"
-
-[[package]]
 name = "attrs"
 version = "19.3.0"
 description = "Classes Without Boilerplate"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
@@ -639,12 +628,9 @@ pyside = ["pyside6_essentials"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.9"
-content-hash = "7f120e3f9d6f8881d5891bf5e2ed6c2b1d84886c1661d4cd4407425c4c4188aa"
+content-hash = "3f78c114ecf2644806b6c105b7285dbf765bb5b816a010f37a59d5f3d1e9880f"
 
 [metadata.files]
-ast-scope = [
-    {file = "ast_scope-0.3.1.tar.gz", hash = "sha256:4789ee255afccd9a19ce95c2e7a077138142fd90b570370fbfa7616b9cdd8d0a"},
-]
 attrs = [
     {file = "attrs-19.3.0-py2.py3-none-any.whl", hash = "sha256:08a96c641c3a74e44eb59afb61a24f2cb9f4d7188748e76ba4bb5edfa3cb7d1c"},
     {file = "attrs-19.3.0.tar.gz", hash = "sha256:f7b7ce16570fe9965acd6d30101a28f62fb4a7f9e926b3bbc9b61f8b04247e72"},
