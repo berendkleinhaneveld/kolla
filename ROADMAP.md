@@ -26,7 +26,7 @@
 - [ ] Component life cycle
 	- [ ] mounted
 	- [ ] updated
-	- [ ] before_unmount
+	- [ ] before_destroy
 - [ ] Component events / emit
 - [ ] Render callback
 - [ ] Provide / inject (setContext, getContext)

@@ -1,4 +1,4 @@
-from PySide6 import QtWidgets
+# from PySide6 import QtWidgets
 
 import kolla
 from kolla import sfc
@@ -14,11 +14,22 @@ source = """
 </widget>
 
 <script>
-count = 0
+from toet import blaat
+a = 0
+b = 0
+c = 0
 
 def bump(self):
-    global count
-    count += 1
+    global a, c
+    a += 1
+
+    def inline():
+        global b
+        b = 3
+
+    b = 2
+    c = c - 1
+
 </script>
 """
 Counter, module = sfc.load_from_string(source, "Counter")
@@ -33,6 +44,6 @@ gui = kolla.Kolla(
 )
 # Render the function component into a container
 # (in this case the app but can be another widget)
-app = QtWidgets.QApplication()
-gui.render(Counter, app)
-app.exec()
+# app = QtWidgets.QApplication()
+# gui.render(Counter, app)
+# app.exec()

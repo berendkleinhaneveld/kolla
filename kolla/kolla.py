@@ -30,6 +30,7 @@ class Kolla:
         # TODO: pass in state
         options = {
             "renderer": self.renderer,
+            "scheduler": self.renderer.scheduler,
             "target": target,
         }
-        self.component = component(options)
+        self.component = component(options, props=state)

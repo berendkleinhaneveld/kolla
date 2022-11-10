@@ -1,8 +1,29 @@
+from observ import scheduler, watch
+
 from ..renderers import DictRenderer
+
+scheduler.register_request_flush(scheduler.flush)
+
+
+def create_component(fragment):
+    fragment.create()
+
+
+def mount_component(component, target, anchor):
+    # print(f"mount component: {target=} {anchor=}")
+    if target:
+        component.fragment.mount(target, anchor)
+    # TODO: run on_mount callbacks/handlers
+
+
+def destroy_component(component):
+    # TODO: run on_destroy callbacks/handlers
+    component.fragment.destroy()
+    component.fragment = None
+    component.ctx = {}
 
 
 class Component:
-    # SVELTE INTERNALS
     def __init__(self, options, instance, create_fragment, props=None, **kwargs):
         super().__init__()
 
@@ -20,6 +41,8 @@ class Component:
             self.dirty.add(variable)
             self.scheduler.add(self)
 
+        self.invalidate = invalidate
+
         self.ctx = instance(self, props, invalidate)
         self.fragment = create_fragment(self.ctx, self.renderer)
         self.dirty = set()
@@ -33,6 +56,20 @@ class Component:
 
         self.flush_update = flush_update
         # Create the fragment
-        self.fragment.create()
+        if "target" in options:
+            self.fragment.create()
+
         # Mount the fragment onto the DOM
-        self.fragment.mount(options["target"], None)
+        mount_component(self, options.get("target"), options.get("anchor"))
+
+        if props is not None:
+            self._watch_props = watch(
+                lambda: props,
+                lambda new: self.set(new),
+                deep=True,
+            )
+
+    def set(self, props):
+        for key, value in props.items():
+            self.invalidate(key, value)
+        # self.fragment.update(props, list(props))

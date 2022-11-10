@@ -84,7 +84,29 @@ def test_dynamic_attribute_undefined_prop(parse_source):
         )
 
 
-@pytest.mark.xfail
+def test_dynamic_attribute_props(parse_source):
+    App, _ = parse_source(
+        """
+        <app :foo="bar" />
+
+        <script>
+        bar = "bla"
+        </script>
+        """
+    )
+
+    state = reactive({"bar": "baz"})
+    container = {"type": "root"}
+    gui = Kolla(
+        renderer=DictRenderer(),
+        event_loop_type=EventLoopType.SYNC,
+    )
+    gui.render(App, container, state=state)
+    app = container["children"][0]
+
+    assert app["attrs"]["foo"] == "baz"
+
+
 def test_dynamic_attribute_props_change(parse_source):
     App, _ = parse_source(
         """

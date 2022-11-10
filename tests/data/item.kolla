@@ -1,4 +1,4 @@
-<item :value="value" />
+<item :val="value" />
 
 <script>
 value = None

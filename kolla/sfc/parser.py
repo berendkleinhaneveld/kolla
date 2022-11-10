@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+from collections import defaultdict
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
 
@@ -15,19 +16,31 @@ DIRECTIVE_ON = f"{DIRECTIVE_PREFIX}on"
 
 
 def parse(source):
+    counter = defaultdict(int)
+
+    def numbered_tag(tag):
+        tag = tag.replace("-", "_").lower()
+        count = counter[tag]
+        counter[tag] += 1
+
+        return f"{tag}_{count}"
+
     def parse_element(node: Node, parent: Element):
         if node.tag == "script":
             script = ast.parse(node.data, mode="exec")
             return Script(content=script)
         element = Element(node.tag, parent=parent)
+        element.name = numbered_tag(element.tag)
         for key, value in node.attrs.items():
             if is_directive(key):
                 expr = ast.parse(value, mode="eval")
-                value = Expression(content=expr)
+                value = Expression(content=expr, raw=value)
             attribute = Attribute(key, value)
             element.attributes.append(attribute)
         if node.data:
-            element.children.append(Text(content=node.data, parent=element))
+            text = Text(content=node.data, parent=element)
+            text.name = numbered_tag("text")
+            element.children.append(text)
         for child in node.children:
             element.children.append(parse_element(child, element))
         return element
@@ -82,7 +95,7 @@ class TemplateParser(HTMLParser):
     def handle_endtag(self, tag):
         # Pop the stack
         node = self.stack.pop()
-        assert tag == node.tag
+        # assert tag.lower() == node.tag.lower(), (tag, node.tag)
         node.end = self.getpos()
 
     def handle_data(self, data):
@@ -113,52 +126,72 @@ class Node:
 @dataclass
 class Expression:
     content: ast.Expression
+    raw: str
 
-    def __repr__(self):
-        return "Expression"
+    # def __repr__(self):
+    #     return "Expression"
 
 
 @dataclass
 class Attribute:
     name: str
     value: str | Expression
-    type: str = "Attribute"
+
+    @property
+    def is_dynamic(self):
+        return self.name.startswith((DIRECTIVE_BIND, ":"))
+
+    @property
+    def key(self):
+        if self.name.startswith((DIRECTIVE_BIND, ":")):
+            _, key = self.name.split(":")
+            return key
+        return self.name
 
     def __hash__(self):
         return id(self)
 
-    def __repr__(self):
-        return f"{self.name}={self.value}"
+    # def __repr__(self):
+    #     return f"{self.name}={self.value}"
 
 
 @dataclass
 class Script:
     content: ast.Module
 
-    def __repr__(self):
-        return "Expression"
+    # def __repr__(self):
+    #     return "Expression"
 
 
 @dataclass
 class Text:
     content: str
     parent: "Element" = None
-    type: str = "Text"
     children: [Expression] = field(default_factory=list)  # TODO
+
+    @property
+    def is_component(self):
+        return False
 
 
 @dataclass
 class Element:
-    name: str
+    # Tag from the template, in original casing
+    tag: str
     attributes: [Attribute] = field(default_factory=list)
     children: ["Element" | Text] = field(default_factory=list)
     parent: "Element" = None
-    type: str = "Element"
+    # Variable name (numbered)
+    name: str = None
+
+    @property
+    def is_component(self):
+        return self.tag[0].isupper()
 
     def __hash__(self):
         return id(self)
 
-    def __repr__(self):
-        attributes = " ".join(str(attr) for attr in self.attributes).strip()
-        children = "\n".join(str(child) for child in self.children).strip()
-        return f"<{self.name} {attributes}>\n{children}\n</{self.name}>"
+    # def __repr__(self):
+    #     attributes = " ".join(str(attr) for attr in self.attributes).strip()
+    #     children = "\n".join(str(child) for child in self.children).strip()
+    #     return f"<{self.tag} {attributes}>\n{children}\n</{self.tag}>"

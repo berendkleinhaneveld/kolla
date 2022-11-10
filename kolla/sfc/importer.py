@@ -1,10 +1,11 @@
+import ast
 import pathlib
 import sys
 from importlib.machinery import ModuleSpec
 
-from . import analyser, generator, parser
+from . import analyser, generator, parser, pretty_code_print
 
-SUFFIX = ".kolla"
+SUFFIX = "kolla"
 
 
 class KollaImporter:
@@ -15,6 +16,7 @@ class KollaImporter:
     @classmethod
     def find_spec(cls, name, path, target=None):
         """Look for kolla files"""
+        # print(name, path, target)
         if target is not None:
             # Target is set when module is being reloaded.
             # In our case we can just return the existing spec.
@@ -45,20 +47,23 @@ class KollaImporter:
         tree = parser.parse(source)
         analysis = analyser.analyse(tree)
         generated_code = generator.generate(tree, analysis, component_name)
+        ast.fix_missing_locations(generated_code)
 
+        pretty_code_print(generated_code)
         # Compile the tree into a code object (module)
         code = compile(generated_code, filename=self.sfc_path, mode="exec")
         # Execute the code as module and pass a dictionary that will capture
         # the global and local scope of the module
-        # module_namespace = {}
-        exec(code, module)
+        module_namespace = {}
+        # exec(code, module)
+        exec(code, module_namespace)
 
         # component = module_namespace[component_name]
 
         # Add the default module keys to the context such that
         # __file__, __name__ and such are available to the loaded module
         # context.update(module.__dict__)
-
+        module.__dict__.update(module_namespace)
         # module.__dict__.update(context)
         # module.__dict__[component.__name__] = component
 

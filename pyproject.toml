@@ -37,6 +37,7 @@ pytest-random-order = "*"
 pytest-xvfb = "*"
 rich = { version = "*", python = "<4.0" }
 ruff = "^0.0.93"
+pytest-watch = "^4.2.0"
 
 [tool.coverage.run]
 omit = ["tests/*", "kolla/renderers/*"]
@@ -46,4 +47,11 @@ requires = ["poetry>=1.0.0"]
 build-backend = "poetry.masonry.api"
 
 [tool.isort]
-profile = "black"
+# Setting just the profile doesn't seem to work right...
+# profile = "black"
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+line_length = 88

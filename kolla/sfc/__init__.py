@@ -17,7 +17,7 @@ def load_from_string(source, component_name, filename=None):
     generated_code = generator.generate(tree, analysis, component_name)
     ast.fix_missing_locations(generated_code)
 
-    # pretty_code_print(generated_code)
+    pretty_code_print(generated_code)
 
     # Compile the tree into a code object (module)
     code = compile(generated_code, filename=filename or "<template>", mode="exec")
@@ -60,3 +60,6 @@ def pretty_code_print(tree):  # pragma: no cover
 
     syntax = Syntax(result, "python")
     console.print(syntax)
+    # print("----")
+    # print(result)
+    # print("----")
