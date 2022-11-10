@@ -33,3 +33,9 @@ def test_nested_component(parse_source):
     item = container["children"][0]["children"][0]
     assert item["type"] == "item"
     assert item["attrs"]["val"] == "foo", item["attrs"]
+
+    button = container["children"][0]["children"][1]
+    for handler in button["handlers"]["clicked"]:
+        handler()
+
+    assert item["attrs"]["val"] == "bar", item["attrs"]
