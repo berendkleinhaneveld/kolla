@@ -2,9 +2,9 @@
 
 - [ ] Tags
 	- [X] Static tags
-	- [ ] Component tags
-	- [X] Dynamic tags (<component is="...">)
-	- [X] Template tags
+	- [X] Component tags
+	- [ ] Dynamic tags (<component is="...">)
+	- [ ] Template tags
 - [ ] Attributes and props
 	- [X] Static attributes
 	- [X] Boolean attributes
@@ -12,10 +12,13 @@
 		- [X] Single attributes (v-bind: / :)
 		- [ ] Bound dicts/objects (v-bind)
 - [ ] Text expressions
+	- [X] Static text
+	- [ ] Dynamic text
+	- [ ] Child elements
 - [ ] Directives
-	- [X] v-if
-	- [X] v-else-if
-	- [X] v-else
+	- [ ] v-if
+	- [ ] v-else-if
+	- [ ] v-else
 	- [ ] v-for
 	- [X] v-on / @ (events)
 		- [ ] Event modifiers
