@@ -88,8 +88,8 @@ def ast_create_fragment_function(tree, analysis):
 
     gather_elements(tree)
 
-    components = list([item for item in items if item.is_component])
-    elements = list([item for item in items if not item.is_component])
+    components = [item for item in items if item.is_component]
+    elements = [item for item in items if not item.is_component]
 
     element_declarations = [
         ast.Assign(
@@ -124,9 +124,6 @@ def ast_create_fragment_function(tree, analysis):
                         values=[ast.Name(id="renderer", ctx=ast.Load())],
                     )
                 ],
-                # TODO: pass props
-                # For each component, find the attributes that are being set
-                # Hmmmm, how to do that?
                 keywords=[
                     ast.keyword(
                         arg="props",
@@ -277,8 +274,6 @@ def ast_create_fragment_function(tree, analysis):
                     )
                 )
             else:
-                # TODO: component updates
-                # breakpoint()
                 if attr.name.startswith((":", DIRECTIVE_BIND)):
                     _, key = attr.name.split(":")
                 else:
@@ -400,8 +395,6 @@ def ast_create_fragment_function(tree, analysis):
                         targets=[ast.Name(id="__parent", ctx=ast.Store())],
                         value=ast.Name(id="parent", ctx=ast.Load()),
                     ),
-                    # *element_mounts,
-                    # *component_mounts,
                     *mounts,
                 ],
                 decorator_list=[],
