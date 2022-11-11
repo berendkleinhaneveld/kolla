@@ -3,7 +3,7 @@
 - [ ] Tags
 	- [X] Static tags
 	- [X] Component tags
-	- [ ] Dynamic tags (<component is="...">)
+	- [ ] Dynamic tags (`<component is="...">`)
 	- [ ] Template tags
 - [ ] Attributes and props
 	- [X] Static attributes
