@@ -95,7 +95,6 @@ class TemplateParser(HTMLParser):
     def handle_endtag(self, tag):
         # Pop the stack
         node = self.stack.pop()
-        # assert tag.lower() == node.tag.lower(), (tag, node.tag)
         node.end = self.getpos()
 
     def handle_data(self, data):
@@ -128,9 +127,6 @@ class Expression:
     content: ast.Expression
     raw: str
 
-    # def __repr__(self):
-    #     return "Expression"
-
 
 @dataclass
 class Attribute:
@@ -151,16 +147,10 @@ class Attribute:
     def __hash__(self):
         return id(self)
 
-    # def __repr__(self):
-    #     return f"{self.name}={self.value}"
-
 
 @dataclass
 class Script:
     content: ast.Module
-
-    # def __repr__(self):
-    #     return "Expression"
 
 
 @dataclass
@@ -190,8 +180,3 @@ class Element:
 
     def __hash__(self):
         return id(self)
-
-    # def __repr__(self):
-    #     attributes = " ".join(str(attr) for attr in self.attributes).strip()
-    #     children = "\n".join(str(child) for child in self.children).strip()
-    #     return f"<{self.tag} {attributes}>\n{children}\n</{self.tag}>"

@@ -337,6 +337,48 @@ def ast_create_fragment_function(tree, analysis):
     if not nonlocal_statement[0].names:
         nonlocal_statement = [ast.Pass()]
 
+    def destroy_element(element):
+        return ast.Expr(
+            value=ast.Call(
+                func=ast.Attribute(
+                    value=ast.Name(id="renderer", ctx=ast.Load()),
+                    attr="remove",
+                    ctx=ast.Load(),
+                ),
+                args=[
+                    ast.Name(id=element.name, ctx=ast.Load()),
+                    ast.Name(
+                        id="__parent" if not element.parent else element.parent.name,
+                        ctx=ast.Load(),
+                    ),
+                ],
+                keywords=[],
+            ),
+        )
+
+    def destroy_component(component):
+        return ast.Expr(
+            value=ast.Call(
+                func=ast.Name(id="destroy_component", ctx=ast.Load()),
+                args=[ast.Name(id=item.name, ctx=ast.Load())],
+                keywords=[],
+            ),
+        )
+
+    item_destroys = []
+    for item in items:
+        if not item.is_component:
+            item_destroys.append(destroy_element(item))
+        else:
+            item_destroys.append(destroy_component(item))
+    item_undeclarations = [
+        ast.Assign(
+            targets=[ast.Name(id=item.name, ctx=ast.Store())],
+            value=ast.Constant(value=None),
+        )
+        for item in items
+    ]
+
     return ast.FunctionDef(
         name="create_fragment",
         args=ast.arguments(
@@ -421,22 +463,10 @@ def ast_create_fragment_function(tree, analysis):
                     defaults=[],
                 ),
                 body=[
-                    # FIXME: Call destroy_component for components
-                    ast.Expr(
-                        value=ast.Call(
-                            func=ast.Attribute(
-                                value=ast.Name(id="renderer", ctx=ast.Load()),
-                                attr="remove",
-                                ctx=ast.Load(),
-                            ),
-                            args=[
-                                ast.Name(id="__element", ctx=ast.Load()),
-                                ast.Name(id="__parent", ctx=ast.Load()),
-                            ],
-                            keywords=[],
-                        ),
-                    ),
+                    *nonlocal_statement,
+                    *item_destroys,
                     *remove_event_listeners,
+                    *item_undeclarations,
                 ],
                 decorator_list=[],
             ),

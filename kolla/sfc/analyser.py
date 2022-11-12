@@ -1,7 +1,14 @@
 import ast
 from collections import defaultdict
 
-from .parser import Element, Expression, Script
+from .parser import (
+    DIRECTIVE_ELSE,
+    DIRECTIVE_ELSE_IF,
+    DIRECTIVE_IF,
+    Element,
+    Expression,
+    Script,
+)
 
 
 def analyse(tree):
@@ -14,32 +21,61 @@ def analyse(tree):
             "will_use_in_template": set(),
             "will_change_elements": defaultdict(set),
             "scope": ScopeFinder(),
+            "conditional_blocks": [],
         }
 
+    # Demand that there is just one script tag
+    assert len(script) == 1, "There is more than one script tag"
     script = script[0]
 
     scope_finder = ScopeFinder()
     scope_finder.visit(script.content)
 
-    result = {
+    analysis = {
         "script": script,
         "variables": scope_finder.variables,
-        "will_change": scope_finder.result,
+        "will_change": scope_finder.changed_variables,
         "will_use_in_template": set(),
         "will_change_elements": defaultdict(set),
         "scope": scope_finder,
+        "conditional_blocks": [],
     }
-    traverse(tree, result)
-    return result
+    analyse_template_content(tree, analysis)
+    find_conditionals(tree, analysis, [])
+    return analysis
 
 
-def traverse(element, result):
+def directive_for_element(element):
+    for attr in element.attributes:
+        if attr.name in {DIRECTIVE_IF, DIRECTIVE_ELSE_IF, DIRECTIVE_ELSE}:
+            return attr.name
+
+
+def find_conditionals(element, analysis, current_block):
     if hasattr(element, "children"):
         for child in element.children:
-            traverse(child, result)
+            if hasattr(child, "attributes"):
+                if directive := directive_for_element(child):
+                    if directive == DIRECTIVE_IF:
+                        if current_block:
+                            analysis["conditional_blocks"].append(current_block)
+                            current_block = []
+                    current_block.append(child)
+
+        if current_block:
+            analysis["conditional_blocks"].append(current_block)
+            current_block = []
+
+        find_conditionals(child, analysis, [])
+
+
+def analyse_template_content(element, analysis):
+    if hasattr(element, "children"):
+        for child in element.children:
+            analyse_template_content(child, analysis)
     if hasattr(element, "attributes"):
         for attr in element.attributes:
-            traverse(attr, result)
+            analyse_template_content(attr, analysis)
 
     if isinstance(element, Element):
         for attr in element.attributes:
@@ -47,25 +83,33 @@ def traverse(element, result):
                 scope_finder = ScopeFinder()
                 scope_finder.visit(attr.value.content)
 
-                result["will_use_in_template"].update(scope_finder.symbols)
+                analysis["will_use_in_template"].update(scope_finder.symbols)
                 for symbol in scope_finder.symbols:
-                    result["will_change_elements"][symbol].add((element, attr))
+                    analysis["will_change_elements"][symbol].add((element, attr))
 
 
 class ScopeFinder(ast.NodeVisitor):
     def __init__(self):
         super().__init__()
-        self.scope = ["global"]
-        self.elevated = [set()]
-        self.globals = []
+        # Stack of scope names
+        self._scope = ["global"]
+        # Stack of names marked as global per scope (follows self._scope)
+        self._elevated = [set()]
+
+        # List of global name nodes (variables that are declared in global scope)
+        self.globals: [ast.Name] = []
+        # Set of names (variables and functions) within the global scope
         self.variables = set()
+        # Set of all referenced names / symbols (used for template expressions)
         self.symbols = set()
-        self.result = defaultdict(set)
+        # Dict of all the global variables that are changed in non-global scopes
+        self.changed_variables = defaultdict(set)
+        # List of Import and ImportFrom nodes from the root scope
         self.imports = []
 
     def generic_visit(self, node):
         # Gather a list of all kinds of variables in global scope
-        if len(self.scope) == 1:
+        if len(self._scope) == 1:
             if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
                 self.variables.add(node.id)
             elif isinstance(node, ast.FunctionDef):
@@ -81,23 +125,23 @@ class ScopeFinder(ast.NodeVisitor):
         # Figure out if scope is changed
         scope_change = False
         if isinstance(node, ast.FunctionDef):
-            self.scope.append(node.name)
-            self.elevated.append(set())
+            self._scope.append(node.name)
+            self._elevated.append(set())
             scope_change = True
 
         if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
-            if len(self.scope) == 1:
+            if len(self._scope) == 1:
                 self.globals.append(node)
-            elif node.id in self.elevated[-1]:
-                self.result[node.id].add(node)
+            elif node.id in self._elevated[-1]:
+                self.changed_variables[node.id].add(node)
 
         # Keep track of which variables are 'elevated' from global for
         # the current scope
-        if len(self.scope) != 1 and isinstance(node, ast.Global):
-            self.elevated[-1].update(set(node.names))
+        if len(self._scope) != 1 and isinstance(node, ast.Global):
+            self._elevated[-1].update(set(node.names))
 
         super().generic_visit(node)
 
         if scope_change:
-            self.scope.pop()
-            self.elevated.pop()
+            self._scope.pop()
+            self._elevated.pop()
