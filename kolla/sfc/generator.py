@@ -2,11 +2,19 @@ import ast
 
 from .analyser import Expression, ScopeFinder
 from .parser import DIRECTIVE_BIND, DIRECTIVE_ON, Element, Text, is_directive
+from .utils import (
+    GlobalToNonLocal,
+    RemoveImports,
+    SymbolsFromContext,
+    WrapWithGetFromProps,
+    WrapWithInvalidateCall,
+)
 
 
 def generate(tree, analysis, class_name):
     # Process tree
-    fragment_function = ast_create_fragment_function(tree, analysis)
+    fragment_functions = []
+    ast_create_fragment_function(tree, analysis, fragment_functions)
 
     # Create component class
     class_tree = ast_create_component_class(class_name)
@@ -35,8 +43,8 @@ def generate(tree, analysis, class_name):
     else:
         instance_function = ast_instance_function(script.content, analysis)
 
-    import_collector = ImportCollector(imports=analysis["scope"].imports)
-    import_collector.visit(instance_function)
+    remove_imports = RemoveImports(imports=analysis["scope"].imports)
+    remove_imports.visit(instance_function)
 
     module = ast.Module(
         body=[
@@ -47,14 +55,14 @@ def generate(tree, analysis, class_name):
                     ast.alias(name="Component"),
                     ast.alias(name="create_component"),
                     ast.alias(name="destroy_component"),
-                    ast.alias(name="mount_component"),
                     ast.alias(name="Fragment"),
+                    ast.alias(name="mount_component"),
                 ],
                 level=0,
             ),
             # Import all imports from the script
             *analysis["scope"].imports,
-            fragment_function,
+            *fragment_functions,
             instance_function,
             class_tree,
         ],
@@ -63,30 +71,10 @@ def generate(tree, analysis, class_name):
     return module
 
 
-class ImportCollector(ast.NodeTransformer):
-    def __init__(self, imports):
-        super().__init__()
-        self.imports = imports
+def ast_create_fragment_function(tree, analysis, result):
+    # items = []
 
-    def generic_visit(self, node):
-        if isinstance(node, (ast.Import, ast.ImportFrom)):
-            if node in self.imports:
-                return None
-        return super().generic_visit(node)
-
-
-def ast_create_fragment_function(tree, analysis):
-    items = []
-
-    def gather_elements(element):
-        if isinstance(element, (Element, Text)):
-            items.append(element)
-
-        if hasattr(element, "children"):
-            for child in element.children:
-                gather_elements(child)
-
-    gather_elements(tree)
+    flatten_tree_into_list_of_elements(tree, items := [])
 
     components = [item for item in items if item.is_component]
     elements = [item for item in items if not item.is_component]
@@ -98,20 +86,6 @@ def ast_create_fragment_function(tree, analysis):
         )
         for item in elements
     ]
-
-    def props_for_component(component):
-        keys = []
-        values = []
-
-        for attr in component.attributes:
-            if isinstance(attr.value, Expression):
-                val = unfold_dynamic_attribute_value(attr.value, analysis["variables"])
-            else:
-                val = ast.Constant(value=attr.value)
-            keys.append(ast.Constant(value=attr.key))
-            values.append(val)
-
-        return ast.Dict(keys=keys, values=values)
 
     component_declarations = [
         ast.Assign(
@@ -127,7 +101,7 @@ def ast_create_fragment_function(tree, analysis):
                 keywords=[
                     ast.keyword(
                         arg="props",
-                        value=props_for_component(item),
+                        value=props_for_component_init(item, analysis["variables"]),
                     )
                 ],
             ),
@@ -135,52 +109,15 @@ def ast_create_fragment_function(tree, analysis):
         for item in components
     ]
 
-    def create_call_for_element(element):
-        if isinstance(element, Text):
-            return ast.Call(
-                func=ast.Attribute(
-                    value=ast.Name(id="renderer", ctx=ast.Load()),
-                    attr="create_text_element",
-                    ctx=ast.Load(),
-                ),
-                args=[],
-                keywords=[],
-            )
-        return ast.Call(
-            func=ast.Attribute(
-                value=ast.Name(id="renderer", ctx=ast.Load()),
-                attr="create_element",
-                ctx=ast.Load(),
-            ),
-            args=[ast.Constant(value=element.tag)],
-            keywords=[],
-        )
-
     element_creations = [
         ast.Assign(
             targets=[ast.Name(id=item.name, ctx=ast.Store())],
-            value=create_call_for_element(item),
+            value=call_create_element(item),
         )
         for item in elements
     ]
 
-    def create_call_for_component(component):
-        # TODO: the right arguments
-        return ast.Expr(
-            value=ast.Call(
-                func=ast.Name(id="create_component", ctx=ast.Load()),
-                args=[
-                    ast.Attribute(
-                        value=ast.Name(id=component.name, ctx=ast.Load()),
-                        attr="fragment",
-                        ctx=ast.Load(),
-                    )
-                ],
-                keywords=[],
-            )
-        )
-
-    component_creations = [create_call_for_component(item) for item in components]
+    component_creations = [call_create_component(item) for item in components]
 
     element_set_attributes = []
     remove_event_listeners = []
@@ -196,54 +133,17 @@ def ast_create_fragment_function(tree, analysis):
             ]
         )
 
-    def mount_expression(item):
-        if item.is_component:
-            return ast.Expr(
-                value=ast.Call(
-                    func=ast.Name(id="mount_component", ctx=ast.Load()),
-                    args=[
-                        ast.Name(id=item.name, ctx=ast.Load()),
-                        ast.Name(
-                            id="parent" if item.parent is None else item.parent.name,
-                            ctx=ast.Load(),
-                        ),
-                        ast.Name(id="anchor", ctx=ast.Load()),
-                    ],
-                    keywords=[],
-                ),
-            )
-        else:
-            return ast.Expr(
-                value=ast.Call(
-                    func=ast.Attribute(
-                        value=ast.Name(id="renderer", ctx=ast.Load()),
-                        attr="insert",
-                        ctx=ast.Load(),
-                    ),
-                    args=[
-                        ast.Name(id=item.name, ctx=ast.Load()),
-                        ast.Name(
-                            id="parent" if item.parent is None else item.parent.name,
-                            ctx=ast.Load(),
-                        ),
-                        ast.Name(id="anchor", ctx=ast.Load()),
-                    ],
-                    keywords=[],
-                ),
-            )
-
     # Mounts need to be processed in the order that they appear in the template
-    mounts = [mount_expression(item) for item in items]
+    mounts = [mount_element(item) for item in items]
 
     element_updates = []
-    component_updates = []
-    for item in components:
-        component_updates.append(
-            ast.Assign(
-                targets=[ast.Name(id=f"{item.name}_changes", ctx=ast.Store())],
-                value=ast.Dict(keys=[], values=[]),
-            )
+    component_updates = [
+        ast.Assign(
+            targets=[ast.Name(id=f"{item.name}_changes", ctx=ast.Store())],
+            value=ast.Dict(keys=[], values=[]),
         )
+        for item in components
+    ]
 
     for name in analysis["will_change_elements"]:
         for element, attr in analysis["will_change_elements"][name]:
@@ -315,8 +215,8 @@ def ast_create_fragment_function(tree, analysis):
                     )
                 )
 
-    for item in components:
-        component_updates.append(
+    component_updates.extend(
+        [
             ast.Expr(
                 value=ast.Call(
                     func=ast.Attribute(
@@ -328,7 +228,9 @@ def ast_create_fragment_function(tree, analysis):
                     keywords=[],
                 )
             )
-        )
+            for item in components
+        ]
+    )
 
     if not element_updates and not component_updates:
         element_updates.append(ast.Pass())
@@ -338,6 +240,14 @@ def ast_create_fragment_function(tree, analysis):
         nonlocal_statement = [ast.Pass()]
 
     def destroy_element(element):
+        if element.is_component:
+            return ast.Expr(
+                value=ast.Call(
+                    func=ast.Name(id="destroy_component", ctx=ast.Load()),
+                    args=[ast.Name(id=element.name, ctx=ast.Load())],
+                    keywords=[],
+                ),
+            )
         return ast.Expr(
             value=ast.Call(
                 func=ast.Attribute(
@@ -356,21 +266,7 @@ def ast_create_fragment_function(tree, analysis):
             ),
         )
 
-    def destroy_component(component):
-        return ast.Expr(
-            value=ast.Call(
-                func=ast.Name(id="destroy_component", ctx=ast.Load()),
-                args=[ast.Name(id=item.name, ctx=ast.Load())],
-                keywords=[],
-            ),
-        )
-
-    item_destroys = []
-    for item in items:
-        if not item.is_component:
-            item_destroys.append(destroy_element(item))
-        else:
-            item_destroys.append(destroy_component(item))
+    item_destroys = [destroy_element(item) for item in items]
     item_undeclarations = [
         ast.Assign(
             targets=[ast.Name(id=item.name, ctx=ast.Store())],
@@ -379,112 +275,114 @@ def ast_create_fragment_function(tree, analysis):
         for item in items
     ]
 
-    return ast.FunctionDef(
-        name="create_fragment",
-        args=ast.arguments(
-            posonlyargs=[],
-            args=[
-                ast.arg(
-                    arg="context",
-                    annotation=ast.Name(
-                        id="dict",
-                        ctx=ast.Load(),
+    result.append(
+        ast.FunctionDef(
+            name="create_fragment",
+            args=ast.arguments(
+                posonlyargs=[],
+                args=[
+                    ast.arg(
+                        arg="context",
+                        annotation=ast.Name(
+                            id="dict",
+                            ctx=ast.Load(),
+                        ),
                     ),
-                ),
-                ast.arg(arg="renderer"),
-            ],
-            kwonlyargs=[],
-            kw_defaults=[],
-            defaults=[],
-        ),
-        body=[
-            # Declare the element variables
-            *element_declarations,
-            *component_declarations,
-            ast.Assign(
-                targets=[ast.Name(id="__parent", ctx=ast.Store())],
-                value=ast.Constant(value=None),
-            ),
-            ast.FunctionDef(
-                name="create",
-                args=ast.arguments(
-                    posonlyargs=[],
-                    args=[],
-                    kwonlyargs=[],
-                    kw_defaults=[],
-                    defaults=[],
-                ),
-                body=[
-                    *nonlocal_statement,
-                    *element_creations,
-                    *element_set_attributes,
-                    *component_creations,
+                    ast.arg(arg="renderer"),
                 ],
-                decorator_list=[],
+                kwonlyargs=[],
+                kw_defaults=[],
+                defaults=[],
             ),
-            ast.FunctionDef(
-                name="mount",
-                args=ast.arguments(
-                    posonlyargs=[],
-                    args=[ast.arg(arg="parent"), ast.arg(arg="anchor")],
-                    kwonlyargs=[],
-                    kw_defaults=[],
-                    defaults=[ast.Constant(value=None)],
+            body=[
+                # Declare the element variables
+                *element_declarations,
+                *component_declarations,
+                ast.Assign(
+                    targets=[ast.Name(id="__parent", ctx=ast.Store())],
+                    value=ast.Constant(value=None),
                 ),
-                body=[
-                    ast.Nonlocal(names=["__parent"]),
-                    ast.Assign(
-                        targets=[ast.Name(id="__parent", ctx=ast.Store())],
-                        value=ast.Name(id="parent", ctx=ast.Load()),
+                ast.FunctionDef(
+                    name="create",
+                    args=ast.arguments(
+                        posonlyargs=[],
+                        args=[],
+                        kwonlyargs=[],
+                        kw_defaults=[],
+                        defaults=[],
                     ),
-                    *mounts,
-                ],
-                decorator_list=[],
-            ),
-            ast.FunctionDef(
-                name="update",
-                args=ast.arguments(
-                    posonlyargs=[],
-                    args=[ast.arg(arg="context"), ast.arg(arg="dirty")],
-                    kwonlyargs=[],
-                    kw_defaults=[],
-                    defaults=[],
-                ),
-                body=[*element_updates, *component_updates],
-                decorator_list=[],
-            ),
-            ast.FunctionDef(
-                name="destroy",
-                args=ast.arguments(
-                    posonlyargs=[],
-                    args=[],
-                    kwonlyargs=[],
-                    kw_defaults=[],
-                    defaults=[],
-                ),
-                body=[
-                    *nonlocal_statement,
-                    *item_destroys,
-                    *remove_event_listeners,
-                    *item_undeclarations,
-                ],
-                decorator_list=[],
-            ),
-            ast.Return(
-                value=ast.Call(
-                    func=ast.Name(id="Fragment", ctx=ast.Load()),
-                    args=[
-                        ast.Name(id="create", ctx=ast.Load()),
-                        ast.Name(id="mount", ctx=ast.Load()),
-                        ast.Name(id="update", ctx=ast.Load()),
-                        ast.Name(id="destroy", ctx=ast.Load()),
+                    body=[
+                        *nonlocal_statement,
+                        *element_creations,
+                        *element_set_attributes,
+                        *component_creations,
                     ],
-                    keywords=[],
-                )
-            ),
-        ],
-        decorator_list=[],
-        returns=ast.Name(id="Fragment", ctx=ast.Load()),
+                    decorator_list=[],
+                ),
+                ast.FunctionDef(
+                    name="mount",
+                    args=ast.arguments(
+                        posonlyargs=[],
+                        args=[ast.arg(arg="parent"), ast.arg(arg="anchor")],
+                        kwonlyargs=[],
+                        kw_defaults=[],
+                        defaults=[ast.Constant(value=None)],
+                    ),
+                    body=[
+                        ast.Nonlocal(names=["__parent"]),
+                        ast.Assign(
+                            targets=[ast.Name(id="__parent", ctx=ast.Store())],
+                            value=ast.Name(id="parent", ctx=ast.Load()),
+                        ),
+                        *mounts,
+                    ],
+                    decorator_list=[],
+                ),
+                ast.FunctionDef(
+                    name="update",
+                    args=ast.arguments(
+                        posonlyargs=[],
+                        args=[ast.arg(arg="context"), ast.arg(arg="dirty")],
+                        kwonlyargs=[],
+                        kw_defaults=[],
+                        defaults=[],
+                    ),
+                    body=[*element_updates, *component_updates],
+                    decorator_list=[],
+                ),
+                ast.FunctionDef(
+                    name="destroy",
+                    args=ast.arguments(
+                        posonlyargs=[],
+                        args=[],
+                        kwonlyargs=[],
+                        kw_defaults=[],
+                        defaults=[],
+                    ),
+                    body=[
+                        *nonlocal_statement,
+                        *item_destroys,
+                        *remove_event_listeners,
+                        *item_undeclarations,
+                    ],
+                    decorator_list=[],
+                ),
+                ast.Return(
+                    value=ast.Call(
+                        func=ast.Name(id="Fragment", ctx=ast.Load()),
+                        args=[
+                            ast.Name(id="create", ctx=ast.Load()),
+                            ast.Name(id="mount", ctx=ast.Load()),
+                            ast.Name(id="update", ctx=ast.Load()),
+                            ast.Name(id="destroy", ctx=ast.Load()),
+                        ],
+                        keywords=[],
+                    )
+                ),
+            ],
+            decorator_list=[],
+            returns=ast.Name(id="Fragment", ctx=ast.Load()),
+        )
     )
 
 
@@ -547,7 +445,7 @@ def ast_instance_function(script_tree, analysis):
     for key, nodes in analysis["will_change"].items():
         wrapped_nodes.update(nodes)
 
-    invalidator_wrapper = NodeInvalidatorWrapper(wrapped_nodes)
+    invalidator_wrapper = WrapWithInvalidateCall(wrapped_nodes)
     invalidator_wrapper.visit(script_tree)
 
     symbols = [
@@ -568,35 +466,7 @@ def ast_instance_function(script_tree, analysis):
 
     for symbol in analysis["will_use_in_template"]:
 
-        class AssignmentsFinder(ast.NodeTransformer):
-            def __init__(self):
-                super().__init__()
-                self.nodes = []
-
-            def generic_visit(self, node):
-                # Wrap each assign in the global root scope
-                if (
-                    isinstance(node, ast.Assign)
-                    and node.targets[0] in scope_finder.globals
-                ):
-                    return ast.Assign(
-                        targets=node.targets,
-                        value=ast.Call(
-                            func=ast.Attribute(
-                                value=ast.Name(id="__props", ctx=ast.Load()),
-                                attr="get",
-                                ctx=ast.Load(),
-                            ),
-                            args=[
-                                ast.Constant(value=node.targets[0].id),
-                                node.value,
-                            ],
-                            keywords=[],
-                        ),
-                    )
-                return super().generic_visit(node)
-
-        AssignmentsFinder().visit(script_tree)
+        WrapWithGetFromProps(scope_finder.globals).visit(script_tree)
 
     return ast.FunctionDef(
         name="instance",
@@ -683,7 +553,7 @@ def unfold_dynamic_attribute_value(value, symbols: set):
 
     # Figure out whether one of the global scope functions is referenced
     # Adjust the ast of the expression to use that value instead
-    ContextTransformer(symbols=symbols).visit(expression)
+    SymbolsFromContext(symbols=symbols).visit(expression)
     return expression.body
 
 
@@ -693,7 +563,7 @@ def ast_set_dynamic_attribute(element: Element, key: str, value, symbols: set):
 
     # Figure out whether one of the global scope functions is referenced
     # Adjust the ast of the expression to use that value instead
-    ContextTransformer(symbols=symbols).visit(expression)
+    SymbolsFromContext(symbols=symbols).visit(expression)
 
     return ast.Expr(
         value=ast.Call(
@@ -710,59 +580,6 @@ def ast_set_dynamic_attribute(element: Element, key: str, value, symbols: set):
             keywords=[],
         )
     )
-
-
-class NodeInvalidatorWrapper(ast.NodeTransformer):
-    def __init__(self, nodes):
-        super().__init__()
-        self.nodes = nodes
-        self.parents = []
-        self.parent = None
-
-    def generic_visit(self, node):
-        result = []
-        targets = []
-        if hasattr(node, "target"):
-            targets = [node.target]
-        elif hasattr(node, "targets"):
-            targets = node.targets
-
-        for target in targets:
-            if target not in self.nodes:
-                continue
-
-            elements = target.elts if isinstance(target, ast.Tuple) else [target]
-            for element in elements:
-                result.append(
-                    ast.Expr(
-                        value=ast.Call(
-                            func=ast.Name(id="__invalidate", ctx=ast.Load()),
-                            args=[
-                                ast.Constant(value=element.id),
-                                ast.Name(id=element.id, ctx=ast.Load()),
-                            ],
-                            keywords=[],
-                        )
-                    )
-                )
-
-        self.parents.append(node)
-        self.parent = node
-        try:
-            subtree = super().generic_visit(node)
-            if result:
-                if isinstance(result, list):
-                    return [subtree, *result]
-                return [subtree, result]
-            return subtree
-        finally:
-            self.parents.remove(node)
-            self.parent = self.parents[-1] if self.parents else None
-
-
-class GlobalToNonLocal(ast.NodeTransformer):
-    def visit_Global(self, node):
-        return ast.Nonlocal(names=node.names)
 
 
 # def ast_set_attribute(el: str, key: str, value: str | None):
@@ -792,7 +609,7 @@ def ast_add_event_listener(element: Element, key: str, value, symbols: set):
 
     expression_ast = value.content
 
-    ContextTransformer(symbols=symbols).visit(expression_ast)
+    SymbolsFromContext(symbols=symbols).visit(expression_ast)
 
     return ast.Expr(
         value=ast.Call(
@@ -830,18 +647,100 @@ def ast_remove_event_listener(el: str, key: str, value, symbols: set):
     )
 
 
-class ContextTransformer(ast.NodeTransformer):
-    def __init__(self, symbols):
-        super().__init__()
-        self.symbols = symbols
-
-    def visit_Name(self, node):
-        if isinstance(node.ctx, ast.Load):
-            if node.id in self.symbols:
-                return ast.Subscript(
-                    value=ast.Name(id="context", ctx=ast.Load()),
-                    slice=ast.Constant(value=node.id),
+def call_create_component(component):
+    return ast.Expr(
+        value=ast.Call(
+            func=ast.Name(id="create_component", ctx=ast.Load()),
+            args=[
+                ast.Attribute(
+                    value=ast.Name(id=component.name, ctx=ast.Load()),
+                    attr="fragment",
                     ctx=ast.Load(),
                 )
+            ],
+            keywords=[],
+        )
+    )
 
-        return node
+
+def flatten_tree_into_list_of_elements(element, result):
+    if isinstance(element, (Element, Text)):
+        result.append(element)
+
+    if hasattr(element, "children"):
+        for child in element.children:
+            flatten_tree_into_list_of_elements(child, result)
+
+
+def props_for_component_init(component, variables):
+    keys = []
+    values = []
+
+    for attr in component.attributes:
+        if isinstance(attr.value, Expression):
+            val = unfold_dynamic_attribute_value(attr.value, variables)
+        else:
+            val = ast.Constant(value=attr.value)
+        keys.append(ast.Constant(value=attr.key))
+        values.append(val)
+
+    return ast.Dict(keys=keys, values=values)
+
+
+def call_create_element(element):
+    if isinstance(element, Text):
+        return ast.Call(
+            func=ast.Attribute(
+                value=ast.Name(id="renderer", ctx=ast.Load()),
+                attr="create_text_element",
+                ctx=ast.Load(),
+            ),
+            args=[],
+            keywords=[],
+        )
+    return ast.Call(
+        func=ast.Attribute(
+            value=ast.Name(id="renderer", ctx=ast.Load()),
+            attr="create_element",
+            ctx=ast.Load(),
+        ),
+        args=[ast.Constant(value=element.tag)],
+        keywords=[],
+    )
+
+
+def mount_element(item):
+    if item.is_component:
+        return ast.Expr(
+            value=ast.Call(
+                func=ast.Name(id="mount_component", ctx=ast.Load()),
+                args=[
+                    ast.Name(id=item.name, ctx=ast.Load()),
+                    ast.Name(
+                        id="parent" if item.parent is None else item.parent.name,
+                        ctx=ast.Load(),
+                    ),
+                    ast.Name(id="anchor", ctx=ast.Load()),
+                ],
+                keywords=[],
+            ),
+        )
+    else:
+        return ast.Expr(
+            value=ast.Call(
+                func=ast.Attribute(
+                    value=ast.Name(id="renderer", ctx=ast.Load()),
+                    attr="insert",
+                    ctx=ast.Load(),
+                ),
+                args=[
+                    ast.Name(id=item.name, ctx=ast.Load()),
+                    ast.Name(
+                        id="parent" if item.parent is None else item.parent.name,
+                        ctx=ast.Load(),
+                    ),
+                    ast.Name(id="anchor", ctx=ast.Load()),
+                ],
+                keywords=[],
+            ),
+        )

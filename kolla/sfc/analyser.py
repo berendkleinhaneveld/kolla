@@ -46,6 +46,8 @@ def analyse(tree):
 
 
 def directive_for_element(element):
+    if not hasattr(element, "attributes"):
+        return
     for attr in element.attributes:
         if attr.name in {DIRECTIVE_IF, DIRECTIVE_ELSE_IF, DIRECTIVE_ELSE}:
             return attr.name
@@ -54,13 +56,15 @@ def directive_for_element(element):
 def find_conditionals(element, analysis, current_block):
     if hasattr(element, "children"):
         for child in element.children:
-            if hasattr(child, "attributes"):
-                if directive := directive_for_element(child):
-                    if directive == DIRECTIVE_IF:
-                        if current_block:
-                            analysis["conditional_blocks"].append(current_block)
-                            current_block = []
-                    current_block.append(child)
+            if directive := directive_for_element(child):
+                if directive == DIRECTIVE_IF:
+                    if current_block:
+                        analysis["conditional_blocks"].append(current_block)
+                        current_block = []
+                current_block.append(child)
+            elif current_block:
+                analysis["conditional_blocks"].append(current_block)
+                current_block = []
 
         if current_block:
             analysis["conditional_blocks"].append(current_block)
