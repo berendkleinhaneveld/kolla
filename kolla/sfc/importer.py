@@ -55,18 +55,9 @@ class KollaImporter:
         # Execute the code as module and pass a dictionary that will capture
         # the global and local scope of the module
         module_namespace = {}
-        # exec(code, module)
         exec(code, module_namespace)
-
-        # component = module_namespace[component_name]
-
-        # Add the default module keys to the context such that
-        # __file__, __name__ and such are available to the loaded module
-        # context.update(module.__dict__)
         module.__dict__.update(module_namespace)
-        # module.__dict__.update(context)
-        # module.__dict__[component.__name__] = component
 
 
-# Add the Cgx importer at the end of the list of finders
+# Add the KollaImporter at the end of the list of finders
 sys.meta_path.append(KollaImporter)
