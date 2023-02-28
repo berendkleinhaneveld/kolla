@@ -2,6 +2,6 @@ from enum import Enum
 
 
 class EventLoopType(Enum):
-    DEFAULT = "asyncio"
+    ASYNC = "asyncio"
     QT = "Qt"
     SYNC = "sync"

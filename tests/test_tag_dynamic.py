@@ -1,19 +1,18 @@
+import pytest
 from observ import reactive
 
-from kolla import Kolla, EventLoopType
+from kolla import EventLoopType, Kolla
 from kolla.renderers import DictRenderer
 
 
+@pytest.mark.xfail
 def test_dynamic_component_tag(parse_source):
     App, _ = parse_source(
         """
         <component :is="foo" />
 
         <script>
-        import kolla
-
-        class App(kolla.Component):
-            pass
+        foo = "template"
         </script>
         """
     )

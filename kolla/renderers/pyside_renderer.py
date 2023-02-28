@@ -1,11 +1,12 @@
-from collections import defaultdict
 import logging
+from collections import defaultdict
 from typing import Any, Callable
 
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtWidgets import QBoxLayout, QFormLayout, QGridLayout, QWidget
 
 from kolla.types import EventLoopType
+
 from . import Renderer
 from .pyside.objects import (
     combobox,
@@ -27,13 +28,12 @@ from .pyside.objects import (
     window,
 )
 from .pyside.utils import (
+    DEFAULT_ARGS,
+    TYPE_MAPPING,
     attr_name_to_method_name,
     camel_case,
-    DEFAULT_ARGS,
     name_to_type,
-    TYPE_MAPPING,
 )
-
 
 logger = logging.getLogger(__name__)
 

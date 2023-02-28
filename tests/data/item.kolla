@@ -1,0 +1,5 @@
+<item :val="value" />
+
+<script>
+value = None
+</script>

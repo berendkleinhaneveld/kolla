@@ -60,25 +60,25 @@ class Renderer(metaclass=ABCMeta):  # pragma: no cover
         pass
 
 
-from .dict_renderer import DictRenderer  # noqa: I202
+from .dict_renderer import DictRenderer  # noqa: F401, E402
 
 try:
-    import js
+    import js  # noqa: F401
 except ImportError:  # pragma: no cover
     pass
 else:
-    from .dom_renderer import DomRenderer
+    from .dom_renderer import DomRenderer  # noqa: F401
 
 try:
-    import pygfx
+    import pygfx  # noqa: F401
 except ImportError:  # pragma: no cover
     pass
 else:
-    from .pygfx_renderer import PygfxRenderer
+    from .pygfx_renderer import PygfxRenderer  # noqa: F401
 
 try:
-    import PySide6
+    import PySide6  # noqa: F401
 except ImportError:  # pragma: no cover
     pass
 else:
-    from .pyside_renderer import PySideRenderer
+    from .pyside_renderer import PySideRenderer  # noqa: F401

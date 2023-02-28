@@ -7,8 +7,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .qobject import set_attribute as qobject_set_attribute
 from ..utils import attr_name_to_method_name, call_method
+from .qobject import set_attribute as qobject_set_attribute
 
 logger = logging.getLogger(__name__)
 

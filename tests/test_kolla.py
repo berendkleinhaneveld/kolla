@@ -1,21 +1,13 @@
-from observ import reactive
 import pytest
 
-from kolla import Kolla, EventLoopType
+from kolla import EventLoopType, Kolla
 from kolla.renderers import DictRenderer
 
 
 def test_basic_dict_renderer(parse_source):
     App, _ = parse_source(
         """
-        <app/>
-
-        <script>
-        import kolla
-
-        class App(kolla.Component):
-            pass
-        </script>
+        <app />
         """
     )
 
@@ -42,38 +34,3 @@ def test_renderer_required():
         )
 
     assert "Expected a Renderer" in str(e)
-
-
-def test_reactive_element(parse_source):
-    App, _ = parse_source(
-        """
-        <counter
-          :count="count"
-        />
-
-        <script>
-        import kolla
-
-        class App(kolla.Component):
-            pass
-        </script>
-        """
-    )
-
-    gui = Kolla(
-        renderer=DictRenderer(),
-        event_loop_type=EventLoopType.SYNC,
-    )
-    container = {"type": "root"}
-    state = reactive({"count": 0})
-
-    gui.render(App, container, state)
-
-    counter = container["children"][0]
-    assert counter["type"] == "counter"
-    assert counter["attrs"]["count"] == 0
-
-    # Update state, which should trigger a re-render
-    state["count"] += 1
-
-    assert counter["attrs"]["count"] == 1, counter

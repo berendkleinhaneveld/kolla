@@ -2,7 +2,6 @@ import logging
 
 from ..utils import attr_name_to_method_name, call_method
 
-
 logger = logging.getLogger(__name__)
 
 
