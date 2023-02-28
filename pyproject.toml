@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "kolla"
-version = "0.5.2"
+version = "0.1.0"
 description = "Reactive user interfaces"
 authors = [
 	"Berend Klein Haneveld <berendkleinhaneveld@gmail.com>",
@@ -18,26 +18,22 @@ pyside = ["pyside6_essentials"]
 python = ">=3.9"
 observ = ">=0.9.5"
 pygfx = { version = ">=0.1.9", optional = true }
-pyside6_essentials = { version = "^6.3", python = "<3.11", optional = true }
+pyside6_essentials = { version = "^6.3", python = "<3.12", optional = true }
 
 # TODO: add entry_point to be able to run kolla as module and render .kolla files directly
 # python -m kolla path/to/example.kolla
 
 [tool.poetry.group.dev.dependencies]
 black = "*"
-flake8 = "*"
-flake8-black = "*"
-flake8-isort = "*"
-flake8-print = "*"
 pre-commit = "*"
 pytest = "*"
 pytest-cov = "*"
 pytest-qt = "*"
 pytest-random-order = "*"
+pytest-watch = "*"
 pytest-xvfb = "*"
 rich = { version = "*", python = "<4.0" }
-ruff = "^0.0.93"
-pytest-watch = "^4.2.0"
+ruff = "*"
 
 [tool.coverage.run]
 omit = ["tests/*", "kolla/renderers/*"]
@@ -46,12 +42,9 @@ omit = ["tests/*", "kolla/renderers/*"]
 requires = ["poetry>=1.0.0"]
 build-backend = "poetry.masonry.api"
 
-[tool.isort]
-# Setting just the profile doesn't seem to work right...
-# profile = "black"
-multi_line_output = 3
-include_trailing_comma = true
-force_grid_wrap = 0
-use_parentheses = true
-ensure_newline_before_comments = true
-line_length = 88
+[tool.ruff]
+# Add "Q" to the list of enabled codes.
+select = ["E", "F", "T20", "I"]
+
+[tool.ruff.per-file-ignores]
+"kolla/runtime/__init__.py" = ["F401"]

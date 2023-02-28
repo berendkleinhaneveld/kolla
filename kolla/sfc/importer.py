@@ -3,7 +3,7 @@ import pathlib
 import sys
 from importlib.machinery import ModuleSpec
 
-from . import analyser, generator, parser, pretty_code_print
+from . import analyser, generator, parser
 
 SUFFIX = "kolla"
 
@@ -49,7 +49,7 @@ class KollaImporter:
         generated_code = generator.generate(tree, analysis, component_name)
         ast.fix_missing_locations(generated_code)
 
-        pretty_code_print(generated_code)
+        # pretty_code_print(generated_code)
         # Compile the tree into a code object (module)
         code = compile(generated_code, filename=self.sfc_path, mode="exec")
         # Execute the code as module and pass a dictionary that will capture

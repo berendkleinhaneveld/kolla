@@ -1,7 +1,7 @@
 import ast
 
 from .analyser import Expression, ScopeFinder
-from .parser import DIRECTIVE_BIND, DIRECTIVE_ON, Element, Text, is_directive
+from .parser import DIRECTIVE_BIND, DIRECTIVE_ON, Element, Node, Text, is_directive
 from .utils import (
     GlobalToNonLocal,
     RemoveImports,
@@ -14,7 +14,10 @@ from .utils import (
 def generate(tree, analysis, class_name):
     # Process tree
     fragment_functions = []
-    ast_create_fragment_function(tree, analysis, fragment_functions)
+    generated_functions = []
+    ast_create_fragment_function(
+        tree, analysis, fragment_functions, generated_functions
+    )
 
     # Create component class
     class_tree = ast_create_component_class(class_name)
@@ -71,11 +74,11 @@ def generate(tree, analysis, class_name):
     return module
 
 
-def ast_create_fragment_function(tree, analysis, result):
-    # items = []
-
+def ast_create_fragment_function(tree, analysis, result, created, function_name=None):
     flatten_tree_into_list_of_elements(tree, items := [])
+    original_items = items
 
+    items = [item for item in items if not item.is_conditional or item in created]
     components = [item for item in items if item.is_component]
     elements = [item for item in items if not item.is_component]
 
@@ -116,6 +119,16 @@ def ast_create_fragment_function(tree, analysis, result):
         )
         for item in elements
     ]
+
+    for item in original_items:
+        for block in analysis["conditional_blocks"]:
+            if item in block and item not in created:
+                created.append(item)
+                virtual_root = Node(tag="root")
+                virtual_root.children.append(item)
+                ast_create_fragment_function(
+                    virtual_root, analysis, result, created, item.name
+                )
 
     component_creations = [call_create_component(item) for item in components]
 
@@ -277,7 +290,9 @@ def ast_create_fragment_function(tree, analysis, result):
 
     result.append(
         ast.FunctionDef(
-            name="create_fragment",
+            name="create_fragment"
+            if not function_name
+            else f"create_fragment_{function_name}",
             args=ast.arguments(
                 posonlyargs=[],
                 args=[
@@ -465,7 +480,6 @@ def ast_instance_function(script_tree, analysis):
     GlobalToNonLocal().visit(script_tree)
 
     for symbol in analysis["will_use_in_template"]:
-
         WrapWithGetFromProps(scope_finder.globals).visit(script_tree)
 
     return ast.FunctionDef(

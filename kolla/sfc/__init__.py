@@ -32,7 +32,7 @@ def generate(file) -> str:
 def load_from_string(source, component_name, filename=None):
     generated_code = _generate_code(source, component_name)
 
-    pretty_code_print(generated_code)
+    # pretty_code_print(generated_code)
 
     # Compile the AST into a code object (module)
     code = compile(generated_code, filename=filename or "<template>", mode="exec")
@@ -81,6 +81,6 @@ def pretty_code_print(tree):  # pragma: no cover
         result = plain_result
         return
 
-    # syntax = Syntax(result, "python")
-    # console.print(syntax)
-    print(result)
+    syntax = Syntax(result, "python")
+    console.print(syntax)
+    # print(result)

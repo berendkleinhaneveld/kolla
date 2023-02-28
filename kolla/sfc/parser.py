@@ -29,6 +29,7 @@ def parse(source):
         if node.tag == "script":
             script = ast.parse(node.data, mode="exec")
             return Script(content=script)
+
         element = Element(node.tag, parent=parent)
         element.name = numbered_tag(element.tag)
         for key, value in node.attrs.items():
@@ -144,6 +145,10 @@ class Attribute:
             return key
         return self.name
 
+    @property
+    def is_conditional(self):
+        return self.name.startswith((DIRECTIVE_IF, DIRECTIVE_ELSE, DIRECTIVE_ELSE_IF))
+
     def __hash__(self):
         return id(self)
 
@@ -163,6 +168,10 @@ class Text:
     def is_component(self):
         return False
 
+    @property
+    def is_conditional(self):
+        return False
+
 
 @dataclass
 class Element:
@@ -171,12 +180,36 @@ class Element:
     attributes: [Attribute] = field(default_factory=list)
     children: ["Element" | Text] = field(default_factory=list)
     parent: "Element" = None
-    # Variable name (numbered)
+    # Variable name (numbered) to be used as reference in generated code
     name: str = None
+    _is_conditional: [bool | None] = None
 
     @property
     def is_component(self):
         return self.tag[0].isupper()
 
+    @property
+    def is_conditional(self):
+        if self._is_conditional is None:
+            self._is_conditional = False
+            for attr in self.attributes:
+                if attr.is_conditional:
+                    self._is_conditional = True
+                    break
+
+        return self._is_conditional
+
     def __hash__(self):
         return id(self)
+
+
+@dataclass
+class Conditional:
+    items: [Element] = field(default_factory=list)
+    expressions: [Expression] = field(default_factory=list)
+
+
+@dataclass
+class List:
+    item: Element
+    expression: Expression

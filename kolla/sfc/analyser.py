@@ -5,6 +5,7 @@ from .parser import (
     DIRECTIVE_ELSE,
     DIRECTIVE_ELSE_IF,
     DIRECTIVE_IF,
+    Conditional,
     Element,
     Expression,
     Script,
@@ -41,7 +42,7 @@ def analyse(tree):
         "conditional_blocks": [],
     }
     analyse_template_content(tree, analysis)
-    find_conditionals(tree, analysis, [])
+    find_conditionals(tree, analysis, Conditional())
     return analysis
 
 
@@ -53,22 +54,33 @@ def directive_for_element(element):
             return attr.name
 
 
+def close_conditional(conditional):
+    parent = conditional.items[0].parent
+    if parent:
+        item_index = parent.items.index(conditional.items[0])
+        del parent.children[item_index : item_index + len(conditional.items)]
+        parent.children.insert(conditional)
+
+
 def find_conditionals(element, analysis, current_block):
     if hasattr(element, "children"):
         for child in element.children:
             if directive := directive_for_element(child):
                 if directive == DIRECTIVE_IF:
-                    if current_block:
-                        analysis["conditional_blocks"].append(current_block)
-                        current_block = []
-                current_block.append(child)
-            elif current_block:
-                analysis["conditional_blocks"].append(current_block)
-                current_block = []
+                    if current_block and current_block.items:
+                        analysis["conditional_blocks"].append(current_block.items)
+                        close_conditional(current_block)
+                        current_block = Conditional()
+                current_block.items.append(child)
+            elif current_block and current_block.items:
+                analysis["conditional_blocks"].append(current_block.items)
+                close_conditional(current_block)
+                current_block = Conditional()
 
-        if current_block:
-            analysis["conditional_blocks"].append(current_block)
-            current_block = []
+        if current_block and current_block.items:
+            analysis["conditional_blocks"].append(current_block.items)
+            close_conditional(current_block)
+            current_block = Conditional()
 
         find_conditionals(child, analysis, [])
 

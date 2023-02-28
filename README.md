@@ -8,7 +8,7 @@ Unholy marriage of concepts from [Svelte](https://svelte.dev), [Vue](https://vue
 * Syntax for SFC (`.kolla`) from Vue
 * Renderers from Collagraph (PySide6, Pygfx, PyScript)
 
-Currently this is being developed as a Proof-of-Concept in order to learn more about how Svelte works.
+*Please don't use this*: it is just a Proof-of-Concept, created in order to learn more about how Svelte works.
 
 
 ## Features
@@ -45,13 +45,13 @@ def bump(self):
 """
 Counter, module = kolla.sfc.load_from_string(source)
 
-# Create a Kolla instance with a PySide renderer 
+# Create a Kolla instance with a PySide renderer
 # and register with the Qt event loop
 gui = kolla.Kolla(
     renderer=kolla.PySideRenderer(),
     event_loop_type=kolla.EventLoopType.QT,
 )
-# Render the function component into a container 
+# Render the function component into a container
 # (in this case the app but can be another widget)
 app = QtWidgets.QApplication()
 gui.render(Counter, app)
