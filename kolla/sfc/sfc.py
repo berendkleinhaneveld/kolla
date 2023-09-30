@@ -1,13 +1,13 @@
 import ast
 from collections import defaultdict
-import logging
-
-# import inspect
 from html.parser import HTMLParser
+import logging
 from pathlib import Path
 import re
 import sys
 import textwrap
+
+# import inspect
 
 from kolla import Component
 
@@ -767,6 +767,6 @@ def _print_ast_tree_as_code(tree):  # pragma: no cover
         syntax = Syntax(result, "python")
         console.print(syntax)  # noqa: T201
     except black.parsing.InvalidInput:
-        print(plain_result)
+        print(plain_result)  # noqa: T201
     except TypeError:
         pass
