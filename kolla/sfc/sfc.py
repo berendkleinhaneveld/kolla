@@ -134,10 +134,10 @@ def construct_ast(path, template=None):
     render_tree = create_kolla_render_function(parser.root, names=imported_names.names)
     ast.fix_missing_locations(render_tree)
 
-    # try:
-    #     _print_ast_tree_as_code(render_tree)
-    # except Exception as e:
-    #     logger.warning("Could not unparse AST", exc_info=e)
+    try:
+        _print_ast_tree_as_code(render_tree)
+    except Exception as e:
+        logger.warning("Could not unparse AST", exc_info=e)
 
     # Put location of render function outside of the script tag
     # This makes sure that the render function can be excluded
@@ -239,6 +239,17 @@ def ast_add_dynamic_attribute(el, key, value, names):
             RewriteName(
                 skip={"renderer", "new", el, "watch"} | lambda_names.names | names
             )
+            .visit(source)
+            .body
+        )
+    )
+
+
+def ast_add_dynamic_dict(el, value, names):
+    source = ast.parse(f"{el}.set_bind_dict('{value}', lambda: {value})", mode="eval")
+    return ast.Expr(
+        value=(
+            RewriteName(skip={"renderer", "new", el, "watch"} | names)
             .visit(source)
             .body
         )
@@ -523,12 +534,13 @@ def create_kolla_render_function(node, names):
                 control_flow_parent = None
 
             for key, value in child.attrs.items():
+                # breakpoint()
                 if not is_directive(key):
                     attributes.append(ast_set_attribute(el, key, value))
                 elif key.startswith((DIRECTIVE_BIND, ":")):
                     if key == DIRECTIVE_BIND:
                         # TODO: bind complete dicts
-                        pass
+                        binds.append(ast_add_dynamic_dict(el, value, names))
                     elif key == ":is" and el.startswith("component"):
                         binds.append(ast_add_dynamic_type(el, value, names))
                     else:

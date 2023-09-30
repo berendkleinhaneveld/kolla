@@ -42,5 +42,6 @@ class Kolla:
         """
         instance = component(state or {})
 
+        # breakpoint()
         self.component = instance.render(self.renderer)
         self.component.mount(target)

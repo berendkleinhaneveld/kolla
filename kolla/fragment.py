@@ -54,13 +54,51 @@ class Fragment:
         self._parent = ref(parent)
 
     def set_attribute(self, attr, value):
+        """
+        Set a static attribute. Will only be applied to element on `create`.
+        """
         self._attributes[attr] = value
 
-    def set_bind(self, attr, expression):
+    def set_bind(self, attr, expression, immediate=False):
+        """
+        Set a dynamic attribute to the value of the expression. This will
+        only be applied on `create`
+        """
         self._watchers[f"bind:{attr}"] = watch(
             expression,
             lambda new: self.renderer.set_attribute(self.element, attr, new),
-            immediate=False,
+            immediate=immediate,
+        )
+
+    def set_bind_dict(self, name, expression):
+        """
+        Set dynamic attributes for all of the keys in the value of the expression.
+
+        The dict of the expression will be watched for the keys. For each new key,
+        `set_bind` is called to create a dynamic attribute for the value of that
+        key. When a key is removed, then the specific watcher is removed and some
+        cleanup performed.
+        """
+
+        def update(new, old):
+            for attr in new - (old or set()):
+                self.set_bind(
+                    attr,
+                    lambda: expression()[attr],
+                    immediate=bool(self.element),
+                )
+
+            for attr in (old or set()) - new:
+                del self._watchers[f"bind:{attr}"]
+                # Perform cleanup
+                if self.element:
+                    self.renderer.remove_attribute(self.element, attr, None)
+
+        self._watchers[f"bind_dict:{name}"] = watch(
+            lambda: set(expression().keys()),
+            update,
+            immediate=True,
+            deep=True,
         )
 
     def set_type(self, expression):
@@ -98,6 +136,8 @@ class Fragment:
         # Set all static attributes
         for attr, value in self._attributes.items():
             self.renderer.set_attribute(self.element, attr, value)
+        self._attributes.clear()
+
         # Add all event handlers
         # TODO: check what happens within v-for constructs?
         for event, handler in self._events.items():
@@ -105,8 +145,8 @@ class Fragment:
         # Set all dynamic aatributes
         for key, watcher in self._watchers.items():
             if key.startswith("bind:"):
-                _, key = key.split(":")
-                self.renderer.set_attribute(self.element, key, watcher.value)
+                _, attr = key.split(":")
+                self.renderer.set_attribute(self.element, attr, watcher.value)
         # IDEA/TODO: for v-for, don't create instances direct, but
         # instead, create child fragments first, then call
         # create on those instead. Might involve some reparenting

@@ -1,7 +1,6 @@
 from observ import reactive
-import pytest
 
-from kolla import Kolla, EventLoopType
+from kolla import EventLoopType, Kolla
 from kolla.renderers import DictRenderer
 
 
@@ -167,8 +166,7 @@ def test_dynamic_attribute_props_change(parse_source):
     assert app["attrs"]["foo"] == "bam"
 
 
-@pytest.mark.xfail
-def test_dynamic_attribute_object(parse_source):
+def test_dynamic_attribute_dict(parse_source):
     App, _ = parse_source(
         """
         <app v-bind="values" />
@@ -191,13 +189,25 @@ def test_dynamic_attribute_object(parse_source):
     gui.render(App, container, state=state)
 
     app = container["children"][0]
-    assert app["attrs"]["foo"] == "foo"
+    assert app["attrs"]["foo"] == "foo", app
 
+    # Change initial attribute
+    state["values"]["foo"] = "bar"
+
+    assert app["attrs"]["foo"] == "bar"
+
+    # Add additional attribute
     state["values"]["bar"] = "bar"
 
-    assert app["attrs"]["foo"] == "foo"
+    assert app["attrs"]["foo"] == "bar"
     assert app["attrs"]["bar"] == "bar"
 
+    # Change the added attribute
     state["values"]["bar"] = "baz"
 
     assert app["attrs"]["bar"] == "baz"
+
+    # Delete the initial attribute
+    del state["values"]["foo"]
+
+    assert "foo" not in app["attrs"]
