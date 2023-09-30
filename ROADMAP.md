@@ -5,12 +5,12 @@
 	- [ ] Component tags
 	- [X] Dynamic tags (<component is="...">)
 	- [X] Template tags
-- [ ] Attributes and props
+- [X] Attributes and props
 	- [X] Static attributes
 	- [X] Boolean attributes
-	- [ ] Bound attributes
+	- [X] Bound attributes
 		- [X] Single attributes (v-bind: / :)
-		- [ ] Bound dicts/objects (v-bind)
+		- [X] Bound dicts/objects (v-bind)
 - [ ] Text expressions
 - [ ] Directives
 	- [X] v-if
