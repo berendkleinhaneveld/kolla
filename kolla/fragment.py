@@ -5,6 +5,7 @@ from itertools import zip_longest
 from typing import Any, Callable
 from weakref import ref
 
+from observ import reactive
 from observ.watcher import watch, Watcher  # type: ignore
 
 from kolla.renderers import Renderer
@@ -38,12 +39,13 @@ class Fragment:
         self._attributes: dict[str, str] = {}
         self._events: dict[str, Callable] = {}
         self._watchers: dict[str, Watcher] = {}
+        self._props: dict[str, Any] | None = None
 
         if parent:
             parent.children.append(self)
 
     def __repr__(self):
-        return f"<Fragment({self.tag})>"
+        return f"<{type(self).__name__}({self.tag})>"
 
     @property
     def parent(self) -> "Fragment" | None:
@@ -64,9 +66,16 @@ class Fragment:
         Set a dynamic attribute to the value of the expression. This will
         only be applied on `create`
         """
+
+        def update(new):
+            if self.element:
+                self.renderer.set_attribute(self.element, attr, new)
+            elif self._props:
+                self._props[attr] = new
+
         self._watchers[f"bind:{attr}"] = watch(
             expression,
-            lambda new: self.renderer.set_attribute(self.element, attr, new),
+            update,
             immediate=immediate,
         )
 
@@ -85,7 +94,7 @@ class Fragment:
                 self.set_bind(
                     attr,
                     lambda: expression()[attr],
-                    immediate=bool(self.element),
+                    immediate=bool(self.element or self._props),
                 )
 
             for attr in (old or set()) - new:
@@ -93,6 +102,8 @@ class Fragment:
                 # Perform cleanup
                 if self.element:
                     self.renderer.remove_attribute(self.element, attr, None)
+                elif self._props:
+                    del self._props[attr]
 
         self._watchers[f"bind_dict:{name}"] = watch(
             lambda: set(expression().keys()),
@@ -142,7 +153,7 @@ class Fragment:
         # TODO: check what happens within v-for constructs?
         for event, handler in self._events.items():
             self.renderer.add_event_listener(self.element, event, handler)
-        # Set all dynamic aatributes
+        # Set all dynamic attributes
         for key, watcher in self._watchers.items():
             if key.startswith("bind:"):
                 _, attr = key.split(":")
@@ -165,9 +176,11 @@ class Fragment:
         for child in self.children:
             child.unmount()
 
-        # if self.element:
-        self.renderer.remove(self.element, self.target)
-        self.element = None
+        if self.element:
+            self.renderer.remove(self.element, self.target)
+            self.element = None
+        elif self._props:
+            self._props = None
 
     def first(self):
         """
@@ -250,7 +263,6 @@ class ListFragment(Fragment):
         super().__init__(*args, **{**kwargs, "type": FragmentType.LIST})
         self.create_fragment: Callable | None = None
         self.expression: str = None
-        # TODO: implement special mount method
         # NOTE: use expression attribute
 
     def set_create_fragment(self, create_fragment: Callable, is_keyed: bool):
@@ -300,9 +312,36 @@ class ListFragment(Fragment):
 class ComponentFragment(Fragment):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **{**kwargs, "type": FragmentType.COMPONENT})
+        self.component = None
+        self.fragment = None
+
+    def create(self):
+        if self.tag is None:
+            return
+
+        self._props = reactive({})
+        # Set static attributes
+        self._props.update(self._attributes)
+
+        # Set dynamic attributes
+        for key, watcher in self._watchers.items():
+            if key.startswith("bind:"):
+                _, attr = key.split(":")
+                self._props[attr] = watcher.value
+
+        self.component = self.tag(self._props)
+        self.fragment = self.component.render(self.renderer)
+
+        # Add all event handlers
+        for event, handler in self._events.items():
+            self.component.add_event_handler(event, handler)
 
     def mount(self, target: Any, anchor: Any | None = None):
         self.target = target
-        # Virtual node, so mount children into target
-        for child in self.children:
-            child.mount(target)
+        self.create()
+
+        if self.fragment:
+            self.fragment.mount(target)
+        else:
+            for child in self.children:
+                child.mount(self.element or target)

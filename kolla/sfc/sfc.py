@@ -67,15 +67,14 @@ def load(path):
 
 def load_from_string(template, path=None):
     """
-    Load template from a string
+    Load template from a string.
+    Returns tuple of class definition and module namespace.
     """
     if path is None:
         path = "<template>"
 
     # Construct the AST tree
     tree, name = construct_ast(path=path, template=template)
-
-    # breakpoint()
 
     # Compile the tree into a code object (module)
     code = compile(tree, filename=str(path), mode="exec")
@@ -117,6 +116,10 @@ def construct_ast(path, template=None):
     imported_names = ImportsCollector()
     imported_names.visit(script_tree)
 
+    class_names = set(
+        node.name for node in script_tree.body if isinstance(node, ast.ClassDef)
+    )
+
     # Find the last ClassDef and assume that it is the
     # component that is defined in the SFC
     component_def = None
@@ -131,7 +134,9 @@ def construct_ast(path, template=None):
 
     # Create render function as AST and inject into the ClassDef
     # render_tree = create_ast_render_function(
-    render_tree = create_kolla_render_function(parser.root, names=imported_names.names)
+    render_tree = create_kolla_render_function(
+        parser.root, names=imported_names.names | class_names
+    )
     ast.fix_missing_locations(render_tree)
 
     try:
@@ -170,13 +175,19 @@ def get_script_ast(parser, path):
     return script_tree
 
 
-def ast_create_fragment(el, tag, parent=None):
+def ast_create_fragment(el, tag, is_component, parent=None):
     """
     Return AST for creating an element with `tag` and
     assigning it to variable name: `el`
     """
+
     keywords = [
-        ast.keyword(arg="tag", value=ast.Constant(value=tag)),
+        ast.keyword(
+            arg="tag",
+            value=ast.Name(id=tag, ctx=ast.Load())
+            if is_component
+            else ast.Constant(value=tag),
+        ),
     ]
     if parent is not None:
         keywords.append(
@@ -185,7 +196,9 @@ def ast_create_fragment(el, tag, parent=None):
     return ast.Assign(
         targets=[ast.Name(id=el, ctx=ast.Store())],
         value=ast.Call(
-            func=ast.Name(id="Fragment", ctx=ast.Load()),
+            func=ast.Name(
+                id="ComponentFragment" if is_component else "Fragment", ctx=ast.Load()
+            ),
             args=[
                 ast.Name(id="renderer", ctx=ast.Load()),
             ],
@@ -378,7 +391,6 @@ def create_kolla_render_function(node, names):
     )
 
     counter = defaultdict(int)
-    names = set()
 
     def create_fragments_function(
         node: Node, targets: ast.Name | ast.Tuple, names: set
@@ -534,7 +546,6 @@ def create_kolla_render_function(node, names):
                 control_flow_parent = None
 
             for key, value in child.attrs.items():
-                # breakpoint()
                 if not is_directive(key):
                     attributes.append(ast_set_attribute(el, key, value))
                 elif key.startswith((DIRECTIVE_BIND, ":")):
@@ -556,7 +567,12 @@ def create_kolla_render_function(node, names):
                     pass
 
             result.append(
-                ast_create_fragment(el, child.tag, parent=control_flow_parent or parent)
+                ast_create_fragment(
+                    el,
+                    child.tag,
+                    is_component=child.tag in names,
+                    parent=control_flow_parent or parent,
+                )
             )
             if condition:
                 result.append(condition)

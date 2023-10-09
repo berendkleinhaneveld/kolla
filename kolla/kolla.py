@@ -36,11 +36,16 @@ class Kolla:
         else:
             scheduler.register_request_flush(scheduler.flush)
 
-    def render(self, component: Callable[[dict], Component], target: Any, state=None):
+    def render(
+        self,
+        component_class: Callable[[dict], type(Component)],
+        target: Any,
+        state=None,
+    ):
         """
         target: DOM element/instance to render into.
         """
-        instance = component(state or {})
+        instance = component_class(state or {})
 
         # breakpoint()
         self.component = instance.render(self.renderer)

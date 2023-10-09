@@ -1,8 +1,8 @@
 # Roadmap
 
-- [ ] Tags
+- [X] Tags
 	- [X] Static tags
-	- [ ] Component tags
+	- [X] Component tags
 	- [X] Dynamic tags (<component is="...">)
 	- [X] Template tags
 - [X] Attributes and props
@@ -16,7 +16,9 @@
 	- [X] v-if
 	- [X] v-else-if
 	- [X] v-else
-	- [ ] v-for
+	- [/] v-for
+		- [/] non-keyed
+		- [ ] keyed
 	- [X] v-on / @ (events)
 		- [ ] Event modifiers
 - [ ] Slots
@@ -32,4 +34,4 @@
 - [ ] Provide / inject (setContext, getContext)
 - [ ] Compile to file
 	- [ ] Auto-update when .kolla file changed
-- [ ] Directly run `.kolla` files:
+- [ ] Directly run `.kolla` files
