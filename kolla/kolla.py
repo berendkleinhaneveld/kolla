@@ -45,8 +45,8 @@ class Kolla:
         """
         target: DOM element/instance to render into.
         """
-        instance = component_class(state or {})
+        component = component_class(state or {})
 
         # breakpoint()
-        self.component = instance.render(self.renderer)
-        self.component.mount(target)
+        self.fragment = component.render(self.renderer)
+        self.fragment.mount(target)

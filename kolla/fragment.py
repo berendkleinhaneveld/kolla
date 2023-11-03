@@ -1,21 +1,19 @@
 from __future__ import annotations
 
-from enum import Enum
-from itertools import zip_longest
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any, TypeVar
 from weakref import ref
 
 from observ import reactive
+from observ.proxy import Proxy
 from observ.watcher import watch, Watcher  # type: ignore
 
-from kolla.renderers import Renderer
+from .component import Component
+from .renderers import Renderer
+from .weak import weak
 
 
-class FragmentType(Enum):
-    NORMAL = 0
-    CONTROL_FLOW = 1
-    LIST = 2
-    COMPONENT = 3
+DomElement = TypeVar("DomElement")
 
 
 class Fragment:
@@ -23,24 +21,37 @@ class Fragment:
         self,
         renderer: Renderer,
         # tag = None for 'transient' Fragments, like a virtual root
-        tag: None | str | Callable = None,
-        parent: "Fragment" | None = None,
-        type: FragmentType = FragmentType.NORMAL,
+        tag: str | Callable[[], Component] | None = None,
+        parent: Fragment | None = None,
     ):
         super().__init__()
 
-        self.renderer = renderer
+        # The tag for the fragment
         self.tag: str | Callable = tag
-        self.element: Any = None
-        self.children: list["Fragment"] = []
-        self.target = None
+        # Reference to the renderer
+        # TODO: would be really nice to not have to pass the renderer
+        # to the fragments...
+        self.renderer = renderer
+        # List of child fragments
+        self.children: list[Fragment] = []
+        # Dom element (if any)
+        self.element: DomElement = None
+        # Target dom-element to render in
+        self.target: DomElement = None
 
-        self._parent: ref["Fragment"] | None = ref(parent) if parent else None
+        # Weak ref to parent fragment
+        self._parent: ref[Fragment] | None = ref(parent) if parent else None
         self._attributes: dict[str, str] = {}
         self._events: dict[str, Callable] = {}
         self._watchers: dict[str, Watcher] = {}
-        self._props: dict[str, Any] | None = None
+        self.props: dict[str, Any] | None = None
 
+        self.condition: Callable | None = None
+
+        # TODO: maybe this next line is a bit nasty, but
+        # on the other hand, it makes sure that the
+        # relationship between this item and its parent
+        # is set correctly
         if parent:
             parent.children.append(self)
 
@@ -48,30 +59,59 @@ class Fragment:
         return f"<{type(self).__name__}({self.tag})>"
 
     @property
-    def parent(self) -> "Fragment" | None:
+    def parent(self) -> Fragment | None:
         return self._parent() if self._parent else None
 
     @parent.setter
-    def parent(self, parent: "Fragment"):
+    def parent(self, parent: Fragment):
+        # TODO: should this also check that this item is
+        # now in the list of the parent's children?
         self._parent = ref(parent)
 
-    def set_attribute(self, attr, value):
+    def first(self) -> DomElement | None:
         """
-        Set a static attribute. Will only be applied to element on `create`.
+        Returns the first DOM element (if any), from either itself, or its decendants,
+        in case of virtual fragments.
+        """
+        if self.element:
+            return self.element
+        for child in self.children:
+            if child.element:
+                return child.element
+
+    def anchor(self, other: Fragment) -> DomElement | None:
+        """
+        Returns the fragment that serves as anchor for the given fragment.
+        Anchor is the first mounted item *after* the current item.
+        """
+        if self.children:
+            idx = self.children.index(other)
+            length = len(self.children) - 1
+            while 0 <= idx < length:
+                idx += 1
+                if element := self.children[idx].first():
+                    return element
+
+    def set_attribute(self, attr: str, value: Any):
+        """
+        Set a static attribute. Note that it is not directly applied to
+        the element, that will happen in the `create` call.
         """
         self._attributes[attr] = value
 
-    def set_bind(self, attr, expression, immediate=False):
+    def set_bind(self, attr: str, expression: Callable, immediate=False):
         """
-        Set a dynamic attribute to the value of the expression. This will
-        only be applied on `create`
+        Set a bind (dynamic attribute) to the value of the expression.
+        This will wait to be applied when `create` is called, unless
+        `immediate` is True.
         """
 
-        def update(new):
+        @weak(self)
+        def update(self, new):
             if self.element:
                 self.renderer.set_attribute(self.element, attr, new)
-            elif self._props:
-                self._props[attr] = new
+            elif self.props:
+                self.props[attr] = new
 
         self._watchers[f"bind:{attr}"] = watch(
             expression,
@@ -79,9 +119,11 @@ class Fragment:
             immediate=immediate,
         )
 
-    def set_bind_dict(self, name, expression):
+    def set_bind_dict(self, name: str, expression: Callable[[], dict[str, Any]]):
         """
         Set dynamic attributes for all of the keys in the value of the expression.
+        Since there might be more than one dict bound, the name is used to discern
+        between them.
 
         The dict of the expression will be watched for the keys. For each new key,
         `set_bind` is called to create a dynamic attribute for the value of that
@@ -89,12 +131,13 @@ class Fragment:
         cleanup performed.
         """
 
-        def update(new, old):
+        @weak(self)
+        def update(self, new: set[str], old: set[str] | None):
             for attr in new - (old or set()):
                 self.set_bind(
                     attr,
                     lambda: expression()[attr],
-                    immediate=bool(self.element or self._props),
+                    immediate=bool(self.element or self.props),
                 )
 
             for attr in (old or set()) - new:
@@ -102,8 +145,8 @@ class Fragment:
                 # Perform cleanup
                 if self.element:
                     self.renderer.remove_attribute(self.element, attr, None)
-                elif self._props:
-                    del self._props[attr]
+                elif self.props:
+                    del self.props[attr]
 
         self._watchers[f"bind_dict:{name}"] = watch(
             lambda: set(expression().keys()),
@@ -112,8 +155,13 @@ class Fragment:
             deep=True,
         )
 
-    def set_type(self, expression):
-        def update_type(tag):
+    def set_type(self, expression: Callable[[], str | Callable]):
+        """
+        Set a dynamic type/tag based on the expression.
+        """
+
+        @weak(self)
+        def update_type(self, tag):
             self.unmount()
             self.tag = tag
             # TODO: also figure out the right anchor
@@ -128,10 +176,17 @@ class Fragment:
             immediate=False,
         )
 
-    def set_condition(self, expression):
+    def set_condition(self, expression: Callable[[], bool]):
+        """
+        Set a expression that determines whether this fragment
+        should show up or not.
+        """
         self.condition = expression
 
-    def add_event(self, event, handler):
+    def set_event(self, event: str, handler: Callable[[], Any]):
+        """
+        Set a handler for an event.
+        """
         self._events[event] = handler
 
     def create(self):
@@ -163,7 +218,7 @@ class Fragment:
         # create on those instead. Might involve some reparenting
         # of the current child fragments???
 
-    def mount(self, target: Any, anchor: Any | None = None):
+    def mount(self, target: DomElement, anchor: DomElement | None = None):
         self.target = target
         self.create()
 
@@ -179,67 +234,61 @@ class Fragment:
         if self.element:
             self.renderer.remove(self.element, self.target)
             self.element = None
-        elif self._props:
-            self._props = None
+        elif self.props:
+            self.props = None
 
-    def first(self):
-        """
-        Returns the first DOM element (if any), from either itself, or its decendants,
-        in case of virtual fragments.
-        """
-        if self.element:
-            return self.element
-        for child in self.children:
-            if child.element:
-                return child.element
+        # TODO: maybe control flow fragments needs another custom 'parenting'
+        # solution where the control flow fragment keeps references to the
+        # 'child' elements
+        # if self.parent and not isinstance(self.parent, ControlFlowFragment):
+        #     if self in self.parent.children:
+        #         self.parent.children.remove(self)
 
     def patch(self, context):
         pass
 
-    def anchor(self, other: "Fragment") -> "Fragment":
-        """
-        Returns the fragment that serves as anchor for the
-        other fragment. Anchor is the first mounted item *after* the
-        current item.
-        """
-        if self.children:
-            idx = self.children.index(other)
-            length = len(self.children) - 1
-            while idx < length:
-                idx += 1
-                if element := self.children[idx].first():
-                    return element
-
 
 class ControlFlowFragment(Fragment):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **{**kwargs, "type": FragmentType.CONTROL_FLOW})
+        super().__init__(*args, **kwargs)
 
-    def mount(self, target: Any, anchor: Any | None = None):
+    def mount(self, target: DomElement, anchor: DomElement | None = None):
         self.target = target
 
-        def active_child():
-            for child in self.children:
-                if hasattr(child, "condition"):
-                    if child.condition():
-                        return child
-                else:
-                    return child
-
-        def update_fragment(new, old):
+        @weak(self)
+        def update_fragment(self, new: Fragment | None, old: Fragment | None):
             if old:
                 old.unmount()
             if new:
-                if self.parent:
-                    anchor = self.parent.anchor(self)
-                new.mount(self.target, anchor)
+                anch = anchor
+                if anch is None and self.parent:
+                    anch = self.parent.anchor(self)
+                new.mount(self.target, anch)
 
         self._watchers["control_flow"] = watch(
-            active_child,
+            self._active_child,
             update_fragment,
             deep=True,
             immediate=True,
         )
+
+    def _active_child(self) -> Fragment | None:
+        for child in self.children:
+            if child.condition is not None:
+                if child.condition():
+                    return child
+            else:
+                return child
+
+
+class Removed:
+    """
+    Type (empty) that is used a special return item from
+    a watcher callback to indicate that an item was removed
+    from a reactive expression.
+    """
+
+    pass
 
 
 class ListFragment(Fragment):
@@ -260,88 +309,129 @@ class ListFragment(Fragment):
     """
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **{**kwargs, "type": FragmentType.LIST})
-        self.create_fragment: Callable | None = None
-        self.expression: str = None
-        # NOTE: use expression attribute
+        super().__init__(*args, **kwargs)
+        self.create_fragment: Callable[[], Fragment] | None = None
+        self.patch_fragment: Callable | None = None
+        self.expression: Callable[[], list[Any]] | None = None
+        self.is_keyed: bool = False
 
-    def set_create_fragment(self, create_fragment: Callable, is_keyed: bool):
+    def set_create_fragment(
+        self, create_fragment: Callable[[], Fragment], is_keyed: bool
+    ):
         self.create_fragment = create_fragment
         self.is_keyed = is_keyed
 
-    def set_expression(self, expression: str):
+    def set_patch_fragment(self, patch_fragment: Callable):
+        self.patch_fragment = patch_fragment
+
+    def set_expression(self, expression: Callable[[], list[Any]] | None):
         self.expression = expression
 
     def mount(self, target: Any, anchor: Any | None = None):
         self.target = target
 
-        def update_list(items):
-            # TODO: adjust method based on keyed/unkeyed
-            if self.children:
-                for child, item in zip_longest(self.children, items):
-                    if child and item:
-                        # TODO: generate patch closures for each fragment
-                        #       in the sfc
-                        child.patch(item)
-                    elif child:
-                        # item is None
-                        child.unmount()
-                    elif item:
-                        # child is None:
-                        fragment = self.create_fragment(item)
-                        self.children.append(fragment)
-                        fragment.parent = self
-                        fragment.mount(target)
-            else:
-                for context in items:
-                    fragment = self.create_fragment(context)
-                    self.children.append(fragment)
-                    fragment.parent = self
+        @weak(self)
+        def update_length(self, new: int, old: int | None):
+            if old is None:
+                old = 0
+            if new > old:
+                # Add new watchers for new indices
+                for i in range(old, new):
 
-                for child in self.children:
-                    child.mount(target)
+                    @weak(self)
+                    def value_at_index(self, i=i):
+                        value = self.expression()
+                        if i < len(value):
+                            return value[i]
+                        return Removed
 
-        self._watchers["list"] = watch(
-            self.expression,
-            update_list,
+                    @weak(self)
+                    def update_for_value_at_index(self, new, old, i=i):
+                        if new is Removed:
+                            # Unmount fragment here and remove from parent
+                            if i < len(self.children):
+                                fragment = self.children.pop(i)
+                                fragment.unmount()
+                                fragment.parent
+                            return
+
+                    @weak(self)
+                    def index_in_value(self, i=i):
+                        value = self.expression()
+                        if i < len(value):
+                            return value[i]
+
+                    # TODO: don't call self.expression so often...
+                    # fragment = self.create_fragment(lambda i=i: self.expression()[i])
+                    fragment = self.create_fragment(index_in_value)
+                    # self.children.append(fragment)
+                    # fragment.parent = self
+                    fragment.mount(target)
+
+                    self._watchers[f"list:{i}"] = watch(
+                        value_at_index,
+                        update_for_value_at_index,
+                        immediate=True,
+                        deep=True,
+                    )
+            elif new < old:
+                # Remove extra watchers
+                for i in range(old, new):
+                    key = f"list:{i}"
+                    del self._watchers[key]
+
+        @weak(self)
+        def expression_length(self):
+            return len(list(self.expression()))
+
+        # For non-keyed lists.
+        self._watchers["list_length"] = watch(
+            expression_length,
+            update_length,
             immediate=True,
-            deep=True,
         )
+        # TODO: for keyed lists: watch a list of keys instead of indices
+        # TODO: but maybe first detect whether a keyed list is used?
 
 
 class ComponentFragment(Fragment):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **{**kwargs, "type": FragmentType.COMPONENT})
-        self.component = None
-        self.fragment = None
+    def __init__(self, *args, props=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.component: Component = None
+        self.fragment: Fragment = None
+        self.props: Proxy | None = props
+        assert "tag" not in kwargs or callable(kwargs["tag"])
 
     def create(self):
         if self.tag is None:
             return
 
-        self._props = reactive({})
+        if self.props is None:
+            self.props = reactive({})
         # Set static attributes
-        self._props.update(self._attributes)
+        self.props.update(self._attributes)
 
         # Set dynamic attributes
         for key, watcher in self._watchers.items():
             if key.startswith("bind:"):
                 _, attr = key.split(":")
-                self._props[attr] = watcher.value
+                self.props[attr] = watcher.value
 
-        self.component = self.tag(self._props)
+        self.component = self.tag(self.props)
         self.fragment = self.component.render(self.renderer)
+        self.fragment.parent = self
+        self.children.append(self.fragment)
 
         # Add all event handlers
         for event, handler in self._events.items():
             self.component.add_event_handler(event, handler)
 
-    def mount(self, target: Any, anchor: Any | None = None):
+    def mount(self, target: DomElement, anchor: DomElement | None = None):
         self.target = target
         self.create()
 
         if self.fragment:
-            self.fragment.mount(target)
+            self.fragment.mount(target, anchor)
         else:
             for child in self.children:
-                child.mount(self.element or target)
+                child.mount(self.element or target, anchor)

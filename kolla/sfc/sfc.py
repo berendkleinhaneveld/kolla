@@ -5,7 +5,6 @@ import logging
 from pathlib import Path
 import re
 import sys
-import textwrap
 
 # import inspect
 
@@ -221,11 +220,8 @@ def ast_set_attribute(el, key, value):
     )
 
 
-def ast_add_dynamic_type(el, value, names):
-    source = ast.parse(
-        textwrap.dedent(f"{el}.set_type(lambda: {value})"),
-        mode="eval",
-    )
+def ast_set_dynamic_type(el, value, names):
+    source = ast.parse(f"{el}.set_type(lambda: {value})", mode="eval")
     lambda_names = LambdaNamesCollector()
     lambda_names.visit(source)
     return ast.Expr(
@@ -239,12 +235,9 @@ def ast_add_dynamic_type(el, value, names):
     )
 
 
-def ast_add_dynamic_attribute(el, key, value, names):
+def ast_set_bind(el, key, value, names):
     _, key = key.split(":")
-    source = ast.parse(
-        textwrap.dedent(f'{el}.set_bind("{key}", lambda: {value})'),
-        mode="eval",
-    )
+    source = ast.parse(f'{el}.set_bind("{key}", lambda: {value})', mode="eval")
     lambda_names = LambdaNamesCollector()
     lambda_names.visit(source)
     return ast.Expr(
@@ -258,7 +251,7 @@ def ast_add_dynamic_attribute(el, key, value, names):
     )
 
 
-def ast_add_dynamic_dict(el, value, names):
+def ast_set_bind_dict(el, value, names):
     source = ast.parse(f"{el}.set_bind_dict('{value}', lambda: {value})", mode="eval")
     return ast.Expr(
         value=(
@@ -269,7 +262,7 @@ def ast_add_dynamic_dict(el, value, names):
     )
 
 
-def ast_add_event_listener(el, key, value, names):
+def ast_set_event(el, key, value, names):
     split_char = "@" if key.startswith("@") else ":"
     _, key = key.split(split_char)
 
@@ -288,7 +281,7 @@ def ast_add_event_listener(el, key, value, names):
         value=ast.Call(
             func=ast.Attribute(
                 value=ast.Name(id=el, ctx=ast.Load()),
-                attr="add_event",
+                attr="set_event",
                 ctx=ast.Load(),
             ),
             args=[
@@ -300,7 +293,7 @@ def ast_add_event_listener(el, key, value, names):
     )
 
 
-def ast_add_condition(child, condition, names):
+def ast_set_condition(child, condition, names):
     condition_ast = ast.parse(f"lambda: bool({condition})", mode="eval")
     RewriteName(skip=names).visit(condition_ast)
 
@@ -438,6 +431,42 @@ def create_kolla_render_function(node, names):
 
         return name, function
 
+    def create_patch_function(node: Node, targets: ast.Name | ast.Tuple, names: set):
+        name = f"patch_{node.tag}"
+
+        unpack_context = ast.Assign(
+            targets=[targets],
+            value=ast.Name(id="context", ctx=ast.Load()),
+        )
+
+        names_collector = StoredNameCollector()
+        names_collector.visit(targets)
+        unpacked_names = names_collector.names
+
+        function = ast.FunctionDef(
+            name=name,
+            args=ast.arguments(
+                posonlyargs=[],
+                args=[ast.arg(node.tag), ast.arg("context")],
+                kwonlyargs=[],
+                kw_defaults=[],
+                defaults=[],
+            ),
+            body=[
+                unpack_context,
+                *create_children(
+                    [node],
+                    None,
+                    names=names | unpacked_names,
+                    within_for_loop=True,
+                ),
+            ],
+            decorator_list=[],
+            returns=None,
+        )
+
+        return name, function
+
     # Create and add children
     def create_children(
         nodes: list[Node], target: str, names: set, within_for_loop=False
@@ -486,11 +515,16 @@ def create_kolla_render_function(node, names):
                     RewriteName(names).visit(expression_ast.generators[0])
                     iterator = expression_ast.generators[0].iter
 
-                    func_name, function = create_fragments_function(
+                    (
+                        create_frag_func_name,
+                        create_frag_function,
+                    ) = create_fragments_function(child, targets, names)
+                    patch_func_name, patch_function = create_patch_function(
                         child, targets, names
                     )
                     is_keyed = ":key" in child.attrs
-                    result.append(function)
+                    result.append(create_frag_function)
+                    result.append(patch_function)
                     result.append(
                         ast.Expr(
                             value=ast.Call(
@@ -500,9 +534,22 @@ def create_kolla_render_function(node, names):
                                     ctx=ast.Load(),
                                 ),
                                 args=[
-                                    ast.Name(id=func_name, ctx=ast.Load()),
+                                    ast.Name(id=create_frag_func_name, ctx=ast.Load()),
                                     ast.Constant(value=is_keyed),
                                 ],
+                                keywords=[],
+                            )
+                        )
+                    )
+                    result.append(
+                        ast.Expr(
+                            value=ast.Call(
+                                func=ast.Attribute(
+                                    value=ast.Name(id=name, ctx=ast.Load()),
+                                    attr="set_patch_fragment",
+                                    ctx=ast.Load(),
+                                ),
+                                args=[ast.Name(id=patch_func_name, ctx=ast.Load())],
                                 keywords=[],
                             )
                         )
@@ -551,18 +598,18 @@ def create_kolla_render_function(node, names):
                 elif key.startswith((DIRECTIVE_BIND, ":")):
                     if key == DIRECTIVE_BIND:
                         # TODO: bind complete dicts
-                        binds.append(ast_add_dynamic_dict(el, value, names))
+                        binds.append(ast_set_bind_dict(el, value, names))
                     elif key == ":is" and el.startswith("component"):
-                        binds.append(ast_add_dynamic_type(el, value, names))
+                        binds.append(ast_set_dynamic_type(el, value, names))
                     else:
-                        binds.append(ast_add_dynamic_attribute(el, key, value, names))
+                        binds.append(ast_set_bind(el, key, value, names))
                 elif key.startswith((DIRECTIVE_ON, "@")):
-                    events.append(ast_add_event_listener(el, key, value, names))
+                    events.append(ast_set_event(el, key, value, names))
                 elif key == DIRECTIVE_IF:
                     result.append(ast_create_control_flow(control_flow_parent, target))
-                    condition = ast_add_condition(el, value, names)
+                    condition = ast_set_condition(el, value, names)
                 elif key == DIRECTIVE_ELSE_IF:
-                    condition = ast_add_condition(el, value, names)
+                    condition = ast_set_condition(el, value, names)
                 elif key == DIRECTIVE_ELSE:
                     pass
 

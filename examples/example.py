@@ -49,7 +49,7 @@ from examples.counter import Counter
 #         el4.set_attribute("text", "Uneven!")
 #         el5 = Element("button", parent=el1)
 #         el5.set_attribute("text", "Click")
-#         el5.add_event("clicked", self._lookup("bump", globals()))
+#         el5.set_event("clicked", self._lookup("bump", globals()))
 #         elements.append(el0)
 #         return elements
 

@@ -83,7 +83,7 @@ def test_component_tag_props_and_events(parse_source):
                 sub0.set_bind("subval", lambda: self._lookup("val", globals()))
                 sub0.set_bind("subvalue", lambda: self._lookup("value", globals()))
                 sub0.set_bind("subother", lambda: self._lookup("other", globals()))
-                sub0.add_event("subaction", lambda: self.emit("action"))
+                sub0.set_event("subaction", lambda: self.emit("action"))
                 return component
 
 

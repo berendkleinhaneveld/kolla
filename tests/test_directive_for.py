@@ -165,6 +165,10 @@ def test_for_between_if_tags(parse_source):
 
 
 def test_for_reactive(parse_source):
+    # IDEA: add listeners for all individual entries of the array
+    # keyed on index, in order to be able to update only single
+    # items, instead of having to go over the full array
+    # Who knows, might also help for keyed lists?
     App, _ = parse_source(
         """
         <node
@@ -189,19 +193,28 @@ def test_for_reactive(parse_source):
     )
     gui.render(App, container, state=state)
 
-    assert len(container["children"]) == len(state["items"])
-    for idx, item in enumerate(state["items"]):
-        assert container["children"][idx]["attrs"]["value"] == item
+    items = [child["attrs"]["value"] for child in container["children"]]
+    assert items == state["items"]
 
     state["items"].append("c")
 
-    assert len(container["children"]) == len(state["items"])
-    for idx, item in enumerate(state["items"]):
-        assert container["children"][idx]["attrs"]["value"] == item
+    items = [child["attrs"]["value"] for child in container["children"]]
+    assert items == state["items"]
+
+    state["items"].pop(1)
+
+    items = [child["attrs"]["value"] for child in container["children"]]
+    assert items == state["items"]
+
+    state["items"] = ["d", "e"]
+
+    items = [child["attrs"]["value"] for child in container["children"]]
+    assert items == state["items"]
 
 
 @pytest.mark.xfail
 def test_for_keyed(parse_source):
+
     # TODO: rewrite test
     assert False
 

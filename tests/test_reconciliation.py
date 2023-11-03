@@ -1,7 +1,6 @@
 from weakref import ref
 
 from observ import reactive
-import pytest
 
 from kolla import EventLoopType, Kolla
 from kolla.renderers import Renderer
@@ -70,7 +69,7 @@ class CustomElementRenderer(Renderer):
         raise NotImplementedError
 
 
-@pytest.mark.xfail
+# @pytest.mark.xfail
 def test_reconcile_by_key(parse_source):
     states = [
         (["a", "b", "c"], ["c", "a", "b"], "shift right"),  # shift right
@@ -85,24 +84,24 @@ def test_reconcile_by_key(parse_source):
         (["a", "b", "c", "d"], ["e", "f"], "replace completely"),  # replace completely
     ]
 
-    # TODO: rewrite this to a .kolla component
     Items, _ = parse_source(
         """
-        <items>
-          <item
-            v-for="item in items"
-            :key="item"
-            :content="item"
-          />
-        </items>
+            <items>
+              <!-- FIXME: using v-for="item in items" is broken... -->
+              <item
+                v-for="it in items"
+                :key="it"
+                :content="it"
+              />
+            </items>
 
-        <script>
-        import kolla
+            <script>
+            import kolla
 
-        class Items(kolla.Component):
-            pass
-        </script>
-    """
+            class Items(kolla.Component):
+                pass
+            </script>
+        """
     )
     renderer = CustomElementRenderer()
 
@@ -122,6 +121,7 @@ def test_reconcile_by_key(parse_source):
 
         for idx, val in enumerate(before):
             item = items.children[idx]
+            # breakpoint()
             assert item.content == val, name
 
         children_refs = [ref(x) for x in items.children]
@@ -129,9 +129,16 @@ def test_reconcile_by_key(parse_source):
         state["items"] = after
 
         for idx, val in enumerate(after):
+            # breakpoint()
             item = items.children[idx]
-            assert item.content == val, name
+            assert item.content == val, (
+                name,
+                [child.content for child in items.children],
+                after,
+            )
 
+            # Check that the instances have not been replaced
+            # but actually have been moved/reconciled
             try:
                 prev_idx = before.index(val)
                 assert item is children_refs[prev_idx](), name
