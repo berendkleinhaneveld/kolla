@@ -61,6 +61,7 @@ class Renderer(metaclass=ABCMeta):  # pragma: no cover
 
 
 from .dict_renderer import DictRenderer  # noqa: I202
+from .html_renderer import HTMLRenderer  # noqa: I202
 
 try:
     import js
