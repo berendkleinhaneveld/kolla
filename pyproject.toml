@@ -21,11 +21,8 @@ pyside6_essentials = { version = "^6.6", python = "<3.13", optional = true }
 # python -m kolla path/to/example.kolla
 
 [tool.poetry.group.dev.dependencies]
-black = "*"
-flake8 = "*"
-flake8-black = "*"
-flake8-import-order = "*"
-flake8-print = "*"
+black = "*"  # Only for debugging generated code
+ruff = "*"
 pre-commit = "*"
 pytest = "*"
 pytest-cov = "*"
@@ -38,6 +35,20 @@ rich = {version = "*", python = "<4.0"}
 omit = [
 	"tests/*",
 	"kolla/renderers/*"
+]
+
+[tool.ruff.lint]
+select = [
+    "E4",
+    "E5",
+    "E7",
+    "E9",
+    "F",   # Pyflakes (default)
+    "I",   # isort imports
+    "N",   # pep8-naming
+    "T10", # flake8-debugger
+    "T20", # flake8-print
+    "RUF", # ruff
 ]
 
 [build-system]

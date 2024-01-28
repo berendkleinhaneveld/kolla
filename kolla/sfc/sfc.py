@@ -1,36 +1,24 @@
 import ast
-from collections import defaultdict
-from html.parser import HTMLParser
 import logging
+from collections import defaultdict
 from pathlib import Path
-import re
-import sys
-
-# import inspect
 
 from kolla import Component
 
+from .parser import KollaParser, Node
 
 logger = logging.getLogger(__name__)
 
-
-# Adjust this setting to disable some runtime checks
-# Defaults to True, except when it is part of an installed application
-KOLLA_RUNTIME_WARNINGS = not getattr(sys, "frozen", False)
-
-SUFFIX = "kolla"
 DIRECTIVE_PREFIX = "v-"
 DIRECTIVE_BIND = f"{DIRECTIVE_PREFIX}bind"
 DIRECTIVE_IF = f"{DIRECTIVE_PREFIX}if"
 DIRECTIVE_ELSE_IF = f"{DIRECTIVE_PREFIX}else-if"
 DIRECTIVE_ELSE = f"{DIRECTIVE_PREFIX}else"
-CONTROL_FLOW_DIRECTIVES = (DIRECTIVE_IF, DIRECTIVE_ELSE_IF, DIRECTIVE_ELSE)
 DIRECTIVE_FOR = f"{DIRECTIVE_PREFIX}for"
 DIRECTIVE_ON = f"{DIRECTIVE_PREFIX}on"
-AST_GEN_VARIABLE_PREFIX = "_ast_"
+CONTROL_FLOW_DIRECTIVES = (DIRECTIVE_IF, DIRECTIVE_ELSE_IF, DIRECTIVE_ELSE)
 
-COMPONENT_CLASS_DEFINITION = re.compile(r"class\s*(.*?)\s*\(.*?\)\s*:")
-MOUSTACHES = re.compile(r"\{\{.*?\}\}")
+SUFFIX = "kolla"
 
 
 def load(path):
@@ -158,7 +146,7 @@ def construct_ast(path, template=None):
     return script_tree, component_def.name
 
 
-def get_script_ast(parser, path):
+def get_script_ast(parser: KollaParser, path: Path):
     """
     Returns the AST created from the script tag in the .kolla file.
     """
@@ -179,7 +167,6 @@ def ast_create_fragment(el, tag, is_component, parent=None):
     Return AST for creating an element with `tag` and
     assigning it to variable name: `el`
     """
-
     keywords = [
         ast.keyword(
             arg="tag",
@@ -358,6 +345,13 @@ def create_kolla_render_function(node, names):
     )
     body.append(
         ast.ImportFrom(
+            module="kolla",
+            names=[ast.alias(name="Component")],
+            level=0,
+        )
+    )
+    body.append(
+        ast.ImportFrom(
             module="kolla.fragment",
             names=[
                 # TODO: import only the needed items
@@ -375,9 +369,7 @@ def create_kolla_render_function(node, names):
             targets=[ast.Name(id="component", ctx=ast.Store())],
             value=ast.Call(
                 func=ast.Name(id="ComponentFragment", ctx=ast.Load()),
-                args=[
-                    ast.Name(id="renderer", ctx=ast.Load()),
-                ],
+                args=[ast.Name(id="renderer", ctx=ast.Load())],
                 keywords=[],
             ),
         )
@@ -396,7 +388,11 @@ def create_kolla_render_function(node, names):
 
         unpack_context = ast.Assign(
             targets=[targets],
-            value=ast.Name(id="context", ctx=ast.Load()),
+            value=ast.Call(
+                func=ast.Name(id="context", ctx=ast.Load()),
+                args=[],
+                keywords=[],
+            ),
         )
 
         names_collector = StoredNameCollector()
@@ -478,11 +474,11 @@ def create_kolla_render_function(node, names):
             el = f"{child.tag}{counter[child.tag]}"
             counter[child.tag] += 1
             parent = target
-            if [
+            if any(
                 True
                 for key in child.attrs
                 if key.startswith((DIRECTIVE_IF, DIRECTIVE_ELSE, DIRECTIVE_ELSE_IF))
-            ]:
+            ):
                 parent = None
 
             # Set static attributes and dynamic (bind) attributes
@@ -493,7 +489,9 @@ def create_kolla_render_function(node, names):
 
             node_with_list_expression = False
             if not within_for_loop:
-                for key in filter(lambda item: item.startswith("v-for"), child.attrs):
+                for key in filter(
+                    lambda item: item.startswith(DIRECTIVE_FOR), child.attrs
+                ):
                     node_with_list_expression = True
                     # Special v-for node!
                     expression = child.attrs[key]
@@ -584,7 +582,7 @@ def create_kolla_render_function(node, names):
             if node_with_list_expression:
                 continue
 
-            if control_flow_directive := child.control_flow():
+            if control_flow_directive := control_flow(child):
                 if control_flow_directive == DIRECTIVE_IF:
                     control_flow_parent = f"control_flow{counter['control_flow']}"
                     counter["control_flow"] += 1
@@ -660,7 +658,7 @@ class StoredNameCollector(ast.NodeVisitor):
     def __init__(self):
         self.names = set()
 
-    def visit_Name(self, node):
+    def visit_Name(self, node):  # noqa: N802
         if isinstance(node.ctx, ast.Store):
             self.names.add(node.id)
 
@@ -672,7 +670,7 @@ class NameCollector(ast.NodeVisitor):
     def __init__(self):
         self.names = set()
 
-    def visit_Name(self, node):
+    def visit_Name(self, node):  # noqa: N802
         self.names.add(node.id)
 
 
@@ -680,7 +678,7 @@ class LambdaNamesCollector(ast.NodeVisitor):
     def __init__(self):
         self.names = set()
 
-    def visit_Lambda(self, node):
+    def visit_Lambda(self, node):  # noqa: N802
         # For some reason the body of a lambda is not visited
         # so we need to do it manually.
         visitor = LambdaNamesCollector()
@@ -698,7 +696,7 @@ class RewriteName(ast.NodeTransformer):
     def __init__(self, skip):
         self.skip = skip
 
-    def visit_Name(self, node):
+    def visit_Name(self, node):  # noqa: N802
         # Don't try and replace any item from the __builtins__
         if node.id in __builtins__:
             return node
@@ -729,86 +727,21 @@ class ImportsCollector(ast.NodeVisitor):
     def __init__(self):
         self.names = set()
 
-    def visit_ImportFrom(self, node):
+    def visit_ImportFrom(self, node):  # noqa: N802
         for alias in node.names:
             self.names.add(alias.asname or alias.name)
 
-    def visit_Import(self, node):
+    def visit_Import(self, node):  # noqa: N802
         for alias in node.names:
             self.names.add(alias.asname or alias.name)
 
 
-class Node:
-    """Node that represents an element from a .kolla file."""
-
-    def __init__(self, tag, attrs=None, location=None):
-        super().__init__()
-        self.tag = tag
-        self.attrs = attrs or {}
-        self.location = location
-        self.end = None
-        self.data = None
-        self.children = []
-
-    def control_flow(self):
-        """Returns the control flow string (if/else-if/else), if present in the
-        attrs of the node."""
-        for attr in self.attrs:
-            if attr in CONTROL_FLOW_DIRECTIVES:
-                return attr
-
-    def child_with_tag(self, tag):
-        for child in self.children:
-            if child.tag == tag:
-                return child
-
-
-class KollaParser(HTMLParser):
-    """Parser for .kolla files.
-
-    Creates a tree of Nodes with all encountered attributes and data.
-    """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.root = Node("root")
-        self.stack = [self.root]
-
-    def handle_starttag(self, tag, attrs):
-        # The tag parameter is lower-cased by the HTMLParser.
-        # In order to figure out whether the tag indicates
-        # an imported class, we need the original casing for
-        # the tag.
-        # Using the original start tag, we can figure out where
-        # the tag is located using a lower-cased version. And then
-        # use the index to extract the original casing for the tag.
-        complete_tag = self.get_starttag_text()
-        index = complete_tag.lower().index(tag)
-        original_tag = complete_tag[index : index + len(tag)]
-        node = Node(original_tag, dict(attrs), self.getpos())
-
-        # Cast attributes that have no value to boolean (True)
-        # so that they function like flags
-        for key, value in node.attrs.items():
-            # TODO: check if the value should actually be an integer
-            if value is None:
-                node.attrs[key] = True
-
-        # Add item as child to the last on the stack
-        self.stack[-1].children.append(node)
-        # Make the new node the last on the stack
-        self.stack.append(node)
-
-    def handle_endtag(self, tag):
-        # TODO: pop it till popping the same tag in order to
-        # work around unclosed tags?
-        # Pop the stack
-        node = self.stack.pop()
-        node.end = self.getpos()
-
-    def handle_data(self, data):
-        if data.strip():
-            self.stack[-1].data = data.strip()
+def control_flow(element):
+    """Returns the control flow string (if/else-if/else), if present in the
+    attrs of the node."""
+    for attr in element.attrs:
+        if attr in CONTROL_FLOW_DIRECTIVES:
+            return attr
 
 
 def _print_ast_tree_as_code(tree):  # pragma: no cover
@@ -828,7 +761,7 @@ def _print_ast_tree_as_code(tree):  # pragma: no cover
         )
         console = Console()
         syntax = Syntax(result, "python")
-        console.print(syntax)  # noqa: T201
+        console.print(syntax)
     except black.parsing.InvalidInput:
         print(plain_result)  # noqa: T201
     except TypeError:
