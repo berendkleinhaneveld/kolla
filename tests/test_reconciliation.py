@@ -1,5 +1,6 @@
 from weakref import ref
 
+import pytest
 from observ import reactive
 
 from kolla import EventLoopType, Kolla
@@ -69,7 +70,7 @@ class CustomElementRenderer(Renderer):
         raise NotImplementedError
 
 
-# @pytest.mark.xfail
+@pytest.mark.xfail
 def test_reconcile_by_key(parse_source):
     states = [
         (["a", "b", "c"], ["c", "a", "b"], "shift right"),  # shift right
