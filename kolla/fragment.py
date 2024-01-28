@@ -29,8 +29,7 @@ class Fragment:
         # The tag for the fragment
         self.tag: str | Callable = tag
         # Reference to the renderer
-        # TODO: would be really nice to not have to pass the renderer
-        # to the fragments...
+        # TODO: don't pass the renderer to the fragments...
         self.renderer = renderer
         # List of child fragments
         self.children: list[Fragment] = []
@@ -243,9 +242,6 @@ class Fragment:
         # if self.parent and not isinstance(self.parent, ControlFlowFragment):
         #     if self in self.parent.children:
         #         self.parent.children.remove(self)
-
-    def patch(self, context):
-        pass
 
 
 class ControlFlowFragment(Fragment):
