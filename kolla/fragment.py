@@ -363,7 +363,6 @@ class ListFragment(Fragment):
                         if i < len(value):
                             return value[i]
 
-                    # TODO: don't call self.expression so often...
                     # fragment = self.create_fragment(lambda i=i: self.expression()[i])
                     fragment = self.create_fragment(index_in_value)
                     # self.children.append(fragment)
