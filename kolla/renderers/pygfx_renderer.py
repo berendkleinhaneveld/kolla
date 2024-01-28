@@ -1,6 +1,6 @@
 import pygfx as gfx
 
-from . import Renderer
+from .renderer import Renderer
 
 ELEMENT_TYPE_CACHE = {}
 DEFAULT_ATTR_CACHE = {}

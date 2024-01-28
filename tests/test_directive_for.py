@@ -1,5 +1,5 @@
-from observ import reactive
 import pytest
+from observ import reactive
 
 from kolla import EventLoopType, Kolla
 from kolla.renderers import DictRenderer
@@ -214,7 +214,6 @@ def test_for_reactive(parse_source):
 
 @pytest.mark.xfail
 def test_for_keyed(parse_source):
-
     # TODO: rewrite test
     assert False
 

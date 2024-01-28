@@ -1,85 +1,26 @@
-from abc import ABCMeta, abstractmethod
-from typing import Any, Callable, Optional
+import importlib
 
-from kolla.types import EventLoopType
+from .dict_renderer import DictRenderer
+from .html_renderer import HTMLRenderer
+from .renderer import Renderer
 
+__all__ = [
+    Renderer.__name__,
+    DictRenderer.__name__,
+    HTMLRenderer.__name__,
+]
 
-class Renderer(metaclass=ABCMeta):  # pragma: no cover
-    """Abstract base class for renderers"""
-
-    def preferred_event_loop_type(self) -> Optional[EventLoopType]:
-        return None
-
-    @abstractmethod
-    def create_element(self, type: str) -> Any:
-        """Create an element for the given type."""
-        pass
-
-    @abstractmethod
-    def create_text_element(self) -> Any:
-        """Create a text element."""
-        pass
-
-    @abstractmethod
-    def insert(self, el: Any, parent: Any, anchor: Any = None):
-        """
-        Add element `el` as a child to the element `parent`.
-        If an anchor is specified, it inserts `el` before the `anchor`
-        element.
-        """
-        pass
-
-    @abstractmethod
-    def remove(self, el: Any, parent: Any):
-        """Remove the element `el` from the children of the element `parent`."""
-        pass
-
-    @abstractmethod
-    def set_element_text(self, el: Any, value: str):
-        """Set the text of a text element."""
-        pass
-
-    @abstractmethod
-    def set_attribute(self, el: Any, attr: str, value: Any):
-        """Set the attribute `attr` of the element `el` to the value `value`."""
-        pass
-
-    @abstractmethod
-    def remove_attribute(self, el: Any, attr: str, value: Any):
-        """Remove the attribute `attr` from the element `el`."""
-        pass
-
-    @abstractmethod
-    def add_event_listener(self, el: Any, event_type: str, value: Callable):
-        """Add event listener for `event_type` to the element `el`."""
-        pass
-
-    @abstractmethod
-    def remove_event_listener(self, el: Any, event_type: str, value: Callable):
-        """Remove event listener for `event_type` to the element `el`."""
-        pass
-
-
-from .dict_renderer import DictRenderer  # noqa: I202
-from .html_renderer import HTMLRenderer  # noqa: I202
-
-try:
-    import js
-except ImportError:  # pragma: no cover
-    pass
-else:
+if importlib.util.find_spec("js"):  # pragme: no cover
     from .dom_renderer import DomRenderer
 
-try:
-    import pygfx
-except ImportError:  # pragma: no cover
-    pass
-else:
+    __all__.append(DomRenderer.__name__)
+
+if importlib.util.find_spec("pygfx"):  # pragme: no cover
     from .pygfx_renderer import PygfxRenderer
 
-try:
-    import PySide6
-except ImportError:  # pragma: no cover
-    pass
-else:
+    __all__.append(PygfxRenderer.__name__)
+
+if importlib.util.find_spec("PySide6"):  # pragme: no cover
     from .pyside_renderer import PySideRenderer
+
+    __all__.append(PySideRenderer.__name__)

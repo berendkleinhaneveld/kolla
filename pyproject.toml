@@ -50,6 +50,12 @@ select = [
     "T20", # flake8-print
     "RUF", # ruff
 ]
+unfixable = [
+    "F401",  # Unused import
+    "F841",  # Unused variable
+]
+[tool.ruff.per-file-ignores]
+"tests/*" = ["N806"]
 
 [build-system]
 requires = ["poetry>=1.0.0"]

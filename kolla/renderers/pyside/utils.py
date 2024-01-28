@@ -2,7 +2,6 @@ from functools import lru_cache
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-
 # Pre-populated cache for types
 TYPE_MAPPING = {
     "button": QtWidgets.QPushButton,

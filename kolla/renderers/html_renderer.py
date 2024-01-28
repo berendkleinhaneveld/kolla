@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from . import Renderer
+from .renderer import Renderer
 
 
 def format_element(element, indent=0):

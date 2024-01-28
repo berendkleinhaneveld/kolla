@@ -1,6 +1,6 @@
 import js
 
-from . import Renderer
+from .renderer import Renderer
 
 
 class DomRenderer(Renderer):

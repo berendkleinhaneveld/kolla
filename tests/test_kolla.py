@@ -1,5 +1,5 @@
-from observ import reactive
 import pytest
+from observ import reactive
 
 from kolla import EventLoopType, Kolla
 from kolla.renderers import DictRenderer
