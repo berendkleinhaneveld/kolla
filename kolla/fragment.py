@@ -4,14 +4,13 @@ from collections.abc import Callable
 from typing import Any, TypeVar
 from weakref import ref
 
-from observ import reactive
+from observ import computed, reactive
 from observ.proxy import Proxy
-from observ.watcher import watch, Watcher  # type: ignore
+from observ.watcher import Watcher, watch  # type: ignore
 
 from .component import Component
 from .renderers import Renderer
 from .weak import weak
-
 
 DomElement = TypeVar("DomElement")
 
@@ -326,6 +325,13 @@ class ListFragment(Fragment):
     def mount(self, target: Any, anchor: Any | None = None):
         self.target = target
 
+        @computed
+        def expression():
+            result = self.expression()
+            if not hasattr(result, "__len__"):
+                return list(result)
+            return result
+
         @weak(self)
         def update_length(self, new: int, old: int | None):
             if old is None:
@@ -336,7 +342,7 @@ class ListFragment(Fragment):
 
                     @weak(self)
                     def value_at_index(self, i=i):
-                        value = self.expression()
+                        value = expression()
                         if i < len(value):
                             return value[i]
                         return Removed
@@ -353,7 +359,7 @@ class ListFragment(Fragment):
 
                     @weak(self)
                     def index_in_value(self, i=i):
-                        value = self.expression()
+                        value = expression()
                         if i < len(value):
                             return value[i]
 
@@ -378,7 +384,7 @@ class ListFragment(Fragment):
 
         @weak(self)
         def expression_length(self):
-            return len(list(self.expression()))
+            return len(expression())
 
         # For non-keyed lists.
         self._watchers["list_length"] = watch(
