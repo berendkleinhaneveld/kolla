@@ -1,6 +1,6 @@
 from importlib.metadata import version
 
-from .component import Component  # noqa: F401
+from .component import Component, ListElementComponent  # noqa: F401
 from .kolla import Kolla  # noqa: F401
 from .renderers import *  # noqa: F403
 from .sfc import importer  # noqa: F401

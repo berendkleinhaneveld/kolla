@@ -207,62 +207,52 @@ def ast_set_attribute(el, key, value):
     )
 
 
-def ast_set_dynamic_type(el, value, names):
-    source = ast.parse(f"{el}.set_type(lambda: {value})", mode="eval")
+def ast_named_lambda(source: str, names: set, list_names: list) -> ast.Expr:
     lambda_names = LambdaNamesCollector()
     lambda_names.visit(source)
     return ast.Expr(
         value=(
-            RewriteName(
-                skip={"renderer", "new", el, "watch"} | lambda_names.names | names
-            )
+            RewriteName(skip=lambda_names.names | names, list_names=list_names)
             .visit(source)
             .body
         )
     )
 
 
-def ast_set_bind(el, key, value, names):
+def ast_set_dynamic_type(el: str, value: str, names: set, list_names: list) -> ast.Expr:
+    source = ast.parse(f"{el}.set_type(lambda: {value})", mode="eval")
+    return ast_named_lambda(
+        source, {"renderer", "new", el, "watch"} | names, list_names
+    )
+
+
+def ast_set_bind(
+    el: str, key: str, value: str, names: set, list_names: list
+) -> ast.Expr:
     _, key = key.split(":")
     source = ast.parse(f'{el}.set_bind("{key}", lambda: {value})', mode="eval")
-    lambda_names = LambdaNamesCollector()
-    lambda_names.visit(source)
-    return ast.Expr(
-        value=(
-            RewriteName(
-                skip={"renderer", "new", el, "watch"} | lambda_names.names | names
-            )
-            .visit(source)
-            .body
-        )
+    return ast_named_lambda(
+        source, {"renderer", "new", el, "watch"} | names, list_names
     )
 
 
-def ast_set_bind_dict(el, value, names):
+def ast_set_bind_dict(el: str, value: str, names: set, list_names: list):
     source = ast.parse(f"{el}.set_bind_dict('{value}', lambda: {value})", mode="eval")
-    return ast.Expr(
-        value=(
-            RewriteName(skip={"renderer", "new", el, "watch"} | names)
-            .visit(source)
-            .body
-        )
+    return ast_named_lambda(
+        source, {"renderer", "new", el, "watch"} | names, list_names
     )
 
 
-def ast_set_event(el, key, value, names):
+def ast_set_event(
+    el: str, key: str, value: str, names: set, list_names: list
+) -> ast.Expr:
     split_char = "@" if key.startswith("@") else ":"
     _, key = key.split(split_char)
 
-    expression_ast = ast.parse(
-        f"lambda *args, **kwargs: {value}(*args, **kwargs)", mode="eval"
-    )
+    source = ast.parse(f"lambda *args, **kwargs: {value}(*args, **kwargs)", mode="eval")
     # v-on directives allow for lambdas which define arguments
     # which need to be skipped by the RewriteName visitor
-    lambda_names = LambdaNamesCollector()
-    lambda_names.visit(expression_ast)
-    RewriteName(skip={"args", "kwargs"} | lambda_names.names | names).visit(
-        expression_ast
-    )
+    lambda_source = ast_named_lambda(source, {"args", "kwargs"} | names, list_names)
 
     return ast.Expr(
         value=ast.Call(
@@ -271,18 +261,15 @@ def ast_set_event(el, key, value, names):
                 attr="set_event",
                 ctx=ast.Load(),
             ),
-            args=[
-                ast.Constant(value=key),
-                expression_ast.body,
-            ],
+            args=[ast.Constant(value=key), lambda_source.value],
             keywords=[],
         )
     )
 
 
-def ast_set_condition(child, condition, names):
+def ast_set_condition(child, condition, names, list_names):
     condition_ast = ast.parse(f"lambda: bool({condition})", mode="eval")
-    RewriteName(skip=names).visit(condition_ast)
+    RewriteName(skip=names, list_names=list_names).visit(condition_ast)
 
     return ast.Expr(
         value=ast.Call(
@@ -339,7 +326,7 @@ def create_kolla_render_function(node, names):
     body.append(
         ast.ImportFrom(
             module="observ",
-            names=[ast.alias(name="watch")],
+            names=[ast.alias(name="watch"), ast.alias(name="computed")],
             level=0,
         )
     )
@@ -378,30 +365,63 @@ def create_kolla_render_function(node, names):
     counter = defaultdict(int)
 
     def create_fragments_function(
-        node: Node, targets: ast.Name | ast.Tuple, names: set
+        node: Node,
+        targets: ast.Name | ast.Tuple,
+        names: set,
+        list_names: list,
     ):
-        name = f"create_{node.tag}"
-        # FIXME: naming the return obj is a bit shaky...
-        return_stmt = ast.Return(
-            value=ast.Name(id=f"{node.tag}{counter[node.tag]}", ctx=ast.Load())
-        )
+        node_tag = f"{node.tag}{counter[node.tag]}"
+        function_name = f"create_{node_tag}"
+        return_stmt = ast.Return(value=ast.Name(id=node_tag, ctx=ast.Load()))
 
-        unpack_context = ast.Assign(
-            targets=[targets],
-            value=ast.Call(
-                func=ast.Name(id="context", ctx=ast.Load()),
-                args=[],
-                keywords=[],
+        # First define a computed method that unpacks the context into
+        # a dictionary
+
+        # We'll also need to rewrite each nested expression to
+        # get the right value from the right place...
+
+        # TODO: maybe I could instead hijack the _lookup function with an extra argument
+        # that can tell in which extra scope to check! So I keep the scope on the 'root'
+        # component (self) (as tuple of dicts n stuff) and then pass in the right scope
+        # name or level or identifier or whatever...
+
+        unpacked_name = f"unpacked{counter['unpacked']}"
+        counter["unpacked"] += 1
+        all_target_names = targets_for_list_expression(targets)
+
+        computed_unpacked_dict = ast.FunctionDef(
+            name=unpacked_name,
+            args=ast.arguments(
+                posonlyargs=[], args=[], kwonlyargs=[], kw_defaults=[], defaults=[]
             ),
+            body=[
+                ast.Assign(
+                    targets=[targets],
+                    value=ast.Call(
+                        func=ast.Name(id="context", ctx=ast.Load()),
+                        args=[],
+                        keywords=[],
+                    ),
+                ),
+                ast.Return(
+                    value=ast.Dict(
+                        keys=[ast.Constant(value=name) for name in all_target_names],
+                        values=[
+                            ast.Name(id=name, ctx=ast.Load())
+                            for name in all_target_names
+                        ],
+                    )
+                ),
+            ],
+            decorator_list=[ast.Name(id="computed", ctx=ast.Load())],
         )
 
         names_collector = StoredNameCollector()
         names_collector.visit(targets)
         unpacked_names = names_collector.names
 
-        # TODO: add 'ctx' argument in order to pass context to the create_node method
         function = ast.FunctionDef(
-            name=name,
+            name=function_name,
             args=ast.arguments(
                 posonlyargs=[],
                 args=[ast.arg("context")],
@@ -409,63 +429,30 @@ def create_kolla_render_function(node, names):
                 kw_defaults=[],
                 defaults=[],
             ),
-            # TODO: parse the v-for expression and create an ast loop
-            # over those items to create Fragments on the fly
             body=[
-                unpack_context,
+                computed_unpacked_dict,
                 *create_children(
                     [node],
                     None,
                     names=names | unpacked_names,
+                    list_names=[{unpacked_name: all_target_names}, *list_names],
                     within_for_loop=True,
                 ),
-            ],
-            decorator_list=[],
-            returns=None,
-        )
-        function.body.append(return_stmt)
-
-        return name, function
-
-    def create_patch_function(node: Node, targets: ast.Name | ast.Tuple, names: set):
-        name = f"patch_{node.tag}"
-
-        unpack_context = ast.Assign(
-            targets=[targets],
-            value=ast.Name(id="context", ctx=ast.Load()),
-        )
-
-        names_collector = StoredNameCollector()
-        names_collector.visit(targets)
-        unpacked_names = names_collector.names
-
-        function = ast.FunctionDef(
-            name=name,
-            args=ast.arguments(
-                posonlyargs=[],
-                args=[ast.arg(node.tag), ast.arg("context")],
-                kwonlyargs=[],
-                kw_defaults=[],
-                defaults=[],
-            ),
-            body=[
-                unpack_context,
-                *create_children(
-                    [node],
-                    None,
-                    names=names | unpacked_names,
-                    within_for_loop=True,
-                ),
+                return_stmt,
             ],
             decorator_list=[],
             returns=None,
         )
 
-        return name, function
+        return function_name, function
 
     # Create and add children
     def create_children(
-        nodes: list[Node], target: str, names: set, within_for_loop=False
+        nodes: list[Node],
+        target: str,
+        names: set,
+        list_names: list,
+        within_for_loop=False,
     ):
         result = []
         control_flow_parent = None
@@ -502,7 +489,7 @@ def create_kolla_render_function(node, names):
                     result.append(ast_create_list_fragment(name, parent, expression))
                     expr = f"[None for {expression}]"
                     expression_ast = ast.parse(expr).body[0].value
-                    targets = expression_ast.generators[0].target
+                    targets: ast.Name | ast.Tuple = expression_ast.generators[0].target
                     # Set the `target` to None so that the targets don't get
                     # rewritten by the RewriteName NodeTransformer
                     # The NodeTransformer doesn't transform the root node, so
@@ -510,19 +497,17 @@ def create_kolla_render_function(node, names):
                     # want to transform which is also the parent node of `target`
                     expression_ast.generators[0].target = None
 
-                    RewriteName(names).visit(expression_ast.generators[0])
+                    RewriteName(names, list_names=list_names).visit(
+                        expression_ast.generators[0]
+                    )
                     iterator = expression_ast.generators[0].iter
 
                     (
                         create_frag_func_name,
                         create_frag_function,
-                    ) = create_fragments_function(child, targets, names)
-                    patch_func_name, patch_function = create_patch_function(
-                        child, targets, names
-                    )
+                    ) = create_fragments_function(child, targets, names, list_names)
                     is_keyed = ":key" in child.attrs
                     result.append(create_frag_function)
-                    result.append(patch_function)
                     result.append(
                         ast.Expr(
                             value=ast.Call(
@@ -532,23 +517,13 @@ def create_kolla_render_function(node, names):
                                     ctx=ast.Load(),
                                 ),
                                 args=[
-                                    ast.Name(id=create_frag_func_name, ctx=ast.Load()),
-                                    ast.Constant(value=is_keyed),
+                                    ast.Name(id=create_frag_func_name, ctx=ast.Load())
                                 ],
-                                keywords=[],
-                            )
-                        )
-                    )
-                    result.append(
-                        ast.Expr(
-                            value=ast.Call(
-                                func=ast.Attribute(
-                                    value=ast.Name(id=name, ctx=ast.Load()),
-                                    attr="set_patch_fragment",
-                                    ctx=ast.Load(),
-                                ),
-                                args=[ast.Name(id=patch_func_name, ctx=ast.Load())],
-                                keywords=[],
+                                keywords=[
+                                    ast.keyword(
+                                        "is_keyed", ast.Constant(value=is_keyed)
+                                    )
+                                ],
                             )
                         )
                     )
@@ -595,19 +570,18 @@ def create_kolla_render_function(node, names):
                     attributes.append(ast_set_attribute(el, key, value))
                 elif key.startswith((DIRECTIVE_BIND, ":")):
                     if key == DIRECTIVE_BIND:
-                        # TODO: bind complete dicts
-                        binds.append(ast_set_bind_dict(el, value, names))
+                        binds.append(ast_set_bind_dict(el, value, names, list_names))
                     elif key == ":is" and el.startswith("component"):
-                        binds.append(ast_set_dynamic_type(el, value, names))
+                        binds.append(ast_set_dynamic_type(el, value, names, list_names))
                     else:
-                        binds.append(ast_set_bind(el, key, value, names))
+                        binds.append(ast_set_bind(el, key, value, names, list_names))
                 elif key.startswith((DIRECTIVE_ON, "@")):
-                    events.append(ast_set_event(el, key, value, names))
+                    events.append(ast_set_event(el, key, value, names, list_names))
                 elif key == DIRECTIVE_IF:
                     result.append(ast_create_control_flow(control_flow_parent, target))
-                    condition = ast_set_condition(el, value, names)
+                    condition = ast_set_condition(el, value, names, list_names)
                 elif key == DIRECTIVE_ELSE_IF:
-                    condition = ast_set_condition(el, value, names)
+                    condition = ast_set_condition(el, value, names, list_names)
                 elif key == DIRECTIVE_ELSE:
                     pass
 
@@ -626,11 +600,11 @@ def create_kolla_render_function(node, names):
             result.extend(events)
 
             # Process the children
-            result.extend(create_children(child.children, el, names))
+            result.extend(create_children(child.children, el, names, list_names))
 
         return result
 
-    body.extend(create_children(node.children, "component", names))
+    body.extend(create_children(node.children, "component", names, []))
 
     body.append(ast.Return(value=ast.Name(id="component", ctx=ast.Load())))
     return ast.FunctionDef(
@@ -649,6 +623,19 @@ def create_kolla_render_function(node, names):
 
 def is_directive(key):
     return key.startswith((DIRECTIVE_PREFIX, ":", "@"))
+
+
+def targets_for_list_expression(targets: ast.Name | ast.Tuple) -> set[str]:
+    def get_names(value, names):
+        if isinstance(value, ast.Name):
+            names.add(value.id)
+            return
+        for val in value.elts:
+            get_names(val, names)
+
+    names = set()
+    get_names(targets, names)
+    return names
 
 
 class StoredNameCollector(ast.NodeVisitor):
@@ -693,13 +680,25 @@ class RewriteName(ast.NodeTransformer):
     """AST node transformer that will try to replace static Name nodes with
     a call to `_lookup` with the name of the node."""
 
-    def __init__(self, skip):
+    def __init__(self, skip, list_names):
         self.skip = skip
+        self.list_names = list_names
 
     def visit_Name(self, node):  # noqa: N802
         # Don't try and replace any item from the __builtins__
         if node.id in __builtins__:
             return node
+
+        for item in self.list_names:
+            for key, value in item.items():
+                if node.id in value:
+                    return ast.Subscript(
+                        value=ast.Call(
+                            func=ast.Name(id=key, ctx=ast.Load()), args=[], keywords=[]
+                        ),
+                        slice=ast.Constant(value=node.id),
+                        ctx=ast.Load(),
+                    )
 
         # Don't replace any name that should be explicitely skipped
         if node.id in self.skip:

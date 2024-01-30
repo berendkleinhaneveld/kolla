@@ -9,12 +9,7 @@ from kolla.types import EventLoopType
 
 
 class Kolla:
-    def __init__(
-        self,
-        renderer,
-        *,
-        event_loop_type: EventLoopType = None,
-    ):
+    def __init__(self, renderer: Renderer, *, event_loop_type: EventLoopType = None):
         if not isinstance(renderer, Renderer):
             raise TypeError(f"Expected a Renderer but got a {type(renderer)}")
         self.renderer = renderer
@@ -45,8 +40,15 @@ class Kolla:
         """
         target: DOM element/instance to render into.
         """
+        # Here is the 'root' component which will carry the state
         component = component_class(state or {})
 
-        # breakpoint()
+        # But maybe the fragment should actually carry the state
+        # instead and pass it when appropriate?
+        # component.render() returns a fragment which is then mounted
+        # into the target (DOM) element
         self.fragment = component.render(self.renderer)
+        # The fragment describes how the tree should be build up
+        # The mount method then is used to actually start mounting
+        # the whole tree
         self.fragment.mount(target)
