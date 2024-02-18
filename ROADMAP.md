@@ -17,7 +17,7 @@
 	- [X] v-else-if
 	- [X] v-else
 	- [/] v-for
-		- [/] non-keyed
+		- [X] non-keyed
 		- [ ] keyed
 	- [X] v-on / @ (events)
 		- [ ] Event modifiers
