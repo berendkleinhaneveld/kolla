@@ -154,7 +154,7 @@ def test_for_between_if_tags(parse_source):
     assert container["children"][11]["type"] == "bar"
 
 
-def test_for_simple_reactive(parse_source, pretty_print):
+def test_for_simple_reactive(parse_source):
     App, _ = parse_source(
         """
         <node
@@ -188,7 +188,7 @@ def test_for_simple_reactive(parse_source, pretty_print):
     assert items == state["items"], format_dict(container)
 
 
-def test_for_reactive(parse_source, pretty_print):
+def test_for_reactive(parse_source):
     App, _ = parse_source(
         """
         <node
@@ -229,6 +229,42 @@ def test_for_reactive(parse_source, pretty_print):
     state["items"] = ["d", "e"]
 
     items = [child["attrs"]["value"] for child in container["children"]]
+    assert items == state["items"], format_dict(container)
+
+
+def test_for_reactive_pop(parse_source):
+    App, _ = parse_source(
+        """
+        <before />
+        <node
+          v-for="i in items"
+          :value="i"
+        />
+        <after />
+
+        <script>
+        import kolla
+
+        class App(kolla.Component):
+            pass
+        </script>
+        """
+    )
+
+    state = reactive({"items": ["a", "b", "c"]})
+    container = {"type": "root"}
+    gui = Kolla(
+        renderer=DictRenderer(),
+        event_loop_type=EventLoopType.SYNC,
+    )
+    gui.render(App, container, state=state)
+
+    items = [child["attrs"]["value"] for child in container["children"][1:-1]]
+    assert items == state["items"], format_dict(container)
+
+    state["items"].pop()
+
+    items = [child["attrs"]["value"] for child in container["children"][1:-1]]
     assert items == state["items"], format_dict(container)
 
 
@@ -370,7 +406,6 @@ def test_looped_example(parse_source):
             counter += 1
 
 
-@pytest.mark.xfail
 def test_consecutive_lists(parse_source):
     App, _ = parse_source(
         """

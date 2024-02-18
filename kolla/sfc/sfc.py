@@ -126,10 +126,6 @@ def construct_ast(path, template=None):
     )
     ast.fix_missing_locations(render_tree)
 
-    try:
-        _print_ast_tree_as_code(render_tree)
-    except Exception as e:
-        logger.warning("Could not unparse AST", exc_info=e)
 
     # Put location of render function outside of the script tag
     # This makes sure that the render function can be excluded
@@ -370,9 +366,9 @@ def create_kolla_render_function(node, names):
         names: set,
         list_names: list,
     ):
-        node_tag = f"{node.tag}{counter[node.tag]}"
-        function_name = f"create_{node_tag}"
-        return_stmt = ast.Return(value=ast.Name(id=node_tag, ctx=ast.Load()))
+        fragment_name = f"{node.tag}{counter[node.tag]}"
+        function_name = f"create_{fragment_name}"
+        return_stmt = ast.Return(value=ast.Name(id=fragment_name, ctx=ast.Load()))
 
         # First define a computed method that unpacks the context into
         # a dictionary
@@ -413,7 +409,7 @@ def create_kolla_render_function(node, names):
                     )
                 ),
             ],
-            decorator_list=[ast.Name(id="computed", ctx=ast.Load())],
+            decorator_list=[],
         )
 
         names_collector = StoredNameCollector()

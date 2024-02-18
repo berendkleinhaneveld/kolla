@@ -153,24 +153,20 @@ def test_directive_else_if_combined(parse_source):
 
     state["boa"] = True
 
-    assert len(container["children"]) == 1
-    assert container["children"][0]["type"] == "boa"
+    def types():
+        return [child["type"] for child in container["children"]]
+
+    assert types() == ["boa"]
 
     state["bar"] = True
 
-    assert len(container["children"]) == 2
-    assert container["children"][0]["type"] == "bar"
-    assert container["children"][1]["type"] == "boa"
+    assert types() == ["bar", "boa"]
 
     state["foo"] = True
 
-    assert len(container["children"]) == 2
-    assert container["children"][0]["type"] == "foo"
-    assert container["children"][1]["type"] == "boa"
+    assert types() == ["foo", "boa"]
 
     state["baz"] = True
     state["foo"] = False
 
-    assert len(container["children"]) == 2
-    assert container["children"][0]["type"] == "bar"
-    assert container["children"][1]["type"] == "baz"
+    assert types() == ["bar", "baz"]

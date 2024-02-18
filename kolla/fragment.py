@@ -15,16 +15,6 @@ from .weak import weak
 DomElement = TypeVar("DomElement")
 
 
-class Removed:
-    """
-    Type (empty) that is used a special return item from
-    a watcher callback to indicate that an item was removed
-    from a reactive expression.
-    """
-
-    pass
-
-
 class Fragment:
     """
     A fragment is something that describes an element as a kind of function.
@@ -75,7 +65,7 @@ class Fragment:
         # FIXME: should fragments also be able to be 'anchored'???
 
     def __repr__(self):
-        return f"<{type(self).__name__}({self.tag})>"
+        return f"<{type(self).__name__}({self.tag}[{id(self)}])>"
 
     @property
     def parent(self) -> Fragment | None:
@@ -179,7 +169,7 @@ class Fragment:
         @weak(self)
         def update_type(self, tag):
             anchor = self.anchor()
-            self.unmount()
+            self.unmount(destroy=False)
             self.tag = tag
             self.mount(self.target, anchor)
 
@@ -262,11 +252,24 @@ class Fragment:
     def _has_content(self):
         return bool(self.element)
 
-    def unmount(self):
+    def unmount(self, destroy=True):
         for child in self.children:
             child.unmount()
 
         self._remove()
+
+        if destroy:
+            self.element = None
+            self.target = None
+            self._attributes = None
+            self._events = None
+            # Disable the fn of the watcher to disable
+            # any 'false' hits
+            for watcher in self._watchers.values():
+                watcher.fn = lambda: ()
+            self._watchers = None
+            self._condition = None
+            self.tag = None
 
         # TODO: maybe control flow fragments needs another custom 'parenting'
         # solution where the control flow fragment keeps references to the
@@ -286,7 +289,7 @@ class ControlFlowFragment(Fragment):
         @weak(self)
         def update_fragment(self, new: Fragment | None, old: Fragment | None):
             if old:
-                old.unmount()
+                old.unmount(destroy=False)
             if new:
                 anch = anchor
                 if anch is None and self.parent:
@@ -303,9 +306,11 @@ class ControlFlowFragment(Fragment):
     def _active_child(self) -> Fragment | None:
         for child in self.children:
             if child._condition is not None:
+                # if and else-if blocks
                 if child._condition():
                     return child
             else:
+                # else block
                 return child
 
 
@@ -355,11 +360,14 @@ class ListFragment(Fragment):
 
         @weak(self)
         def update_children(self):
+            for index in reversed(range(len(expression()), len(self.children))):
+                fragment = self.children.pop(index)
+                fragment.unmount()
+
             for i, item in enumerate(expression()):
                 if i >= len(self.children):
 
-                    @weak(self)
-                    def index_in_value(self, i=i):
+                    def index_in_value(i=i):
                         if i < len(expression()):
                             return expression()[i]
 
@@ -375,12 +383,7 @@ class ListFragment(Fragment):
                     fragment = self.create_fragment(index_in_value)
                     self.children.append(fragment)
                     fragment.parent = self
-                    fragment.mount(target)
-
-            for index in reversed(range(i + 1, len(self.children))):
-                fragment = self.children.pop(index)
-                fragment.unmount()
-                fragment.parent = None
+                    fragment.mount(target, anchor=self.anchor())
 
         # Then we add a watch_effect for the children
         # which adds/removes/updates all the child fragments
