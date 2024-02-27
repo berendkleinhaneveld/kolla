@@ -211,7 +211,7 @@ class Fragment:
         # Set all static attributes
         for attr, value in self._attributes.items():
             self.renderer.set_attribute(self.element, attr, value)
-        self._attributes.clear()
+        # self._attributes.clear()
 
         # Add all event handlers
         # TODO: check what happens within v-for constructs?
@@ -254,7 +254,7 @@ class Fragment:
 
     def unmount(self, destroy=True):
         for child in self.children:
-            child.unmount()
+            child.unmount(destroy=destroy)
 
         self._remove()
 

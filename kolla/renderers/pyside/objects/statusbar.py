@@ -25,9 +25,9 @@ def remove(self, el):
 
 def set_attribute(self, attr, value):
     if attr == "text":
-        if isinstance(value, tuple):
-            self.showMessage(*value)
-        else:
+        if isinstance(value, str):
             self.showMessage(value)
+        else:
+            self.showMessage(*value)
     else:
         widget.set_attribute(self, attr, value)

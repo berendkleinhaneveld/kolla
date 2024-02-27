@@ -37,6 +37,11 @@ def test_directive_if_root(parse_source):
 
     assert "children" not in container
 
+    state["foo"] = True
+
+    assert len(container["children"]) == 1
+    assert container["children"][0]["type"] == "app"
+
 
 def test_directive_if_non_root(parse_source):
     App, _ = parse_source(
@@ -74,6 +79,11 @@ def test_directive_if_non_root(parse_source):
     state["foo"] = False
 
     assert "children" not in app
+
+    state["foo"] = True
+
+    assert len(app["children"]) == 1
+    assert app["children"][0]["type"] == "item"
 
 
 def test_directive_if_with_children(parse_source):
@@ -113,6 +123,14 @@ def test_directive_if_with_children(parse_source):
     state["foo"] = False
 
     assert "children" not in container
+
+    state["foo"] = True
+
+    app = container["children"][0]
+    assert app["type"] == "app"
+    assert len(app["children"]) == 1
+    assert app["children"][0]["type"] == "item"
+    assert app["children"][0]["attrs"]["text"] == "foo"
 
 
 def test_directive_if_surrounded(parse_source):
@@ -156,8 +174,15 @@ def test_directive_if_surrounded(parse_source):
     assert container["children"][0]["type"] == "before"
     assert container["children"][-1]["type"] == "after"
 
+    state["foo"] = True
 
-def test_directive_if_nested(parse_source):
+    assert len(container["children"]) == 3
+    assert container["children"][1]["type"] == "app"
+    assert container["children"][0]["type"] == "before"
+    assert container["children"][-1]["type"] == "after"
+
+
+def test_directive_if_nested_if(parse_source):
     App, _ = parse_source(
         """
         <app v-if="foo">
@@ -196,4 +221,17 @@ def test_directive_if_nested(parse_source):
 
     state["foo"] = False
 
+    assert "children" not in app
+
+    state["foo"] = True
+
+    assert len(container["children"]) == 1
+    app = container["children"][0]
+    assert app["type"] == "app"
+    assert app["children"][0]["type"] == "item"
+
+    state["bar"] = False
+
+    app = container["children"][0]
+    assert app["type"] == "app"
     assert "children" not in app
