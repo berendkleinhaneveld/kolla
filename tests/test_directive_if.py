@@ -235,3 +235,50 @@ def test_directive_if_nested_if(parse_source):
     app = container["children"][0]
     assert app["type"] == "app"
     assert "children" not in app
+
+
+def test_directive_if_nested_for(parse_source):
+    App, _ = parse_source(
+        """
+        <app v-if="foo">
+          <item
+            v-for="name in names"
+            :text="name"
+          />
+        </app>
+
+        <script>
+        import kolla
+
+        class App(kolla.Component):
+            pass
+        </script>
+        """
+    )
+
+    state = reactive({"foo": True, "names": ["a", "b"]})
+    container = {"type": "root"}
+    gui = Kolla(
+        renderer=DictRenderer(),
+        event_loop_type=EventLoopType.SYNC,
+    )
+    gui.render(App, container, state=state)
+
+    app = container["children"][0]
+    assert app["type"] == "app"
+    assert len(app["children"]) == 2
+
+    state["names"].append("c")
+
+    assert len(app["children"]) == 3
+
+    state["foo"] = False
+
+    assert "children" not in container
+
+    state["foo"] = True
+
+    app = container["children"][0]
+    assert "children" in app
+    assert app["type"] == "app"
+    assert len(app["children"]) == 3

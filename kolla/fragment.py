@@ -389,8 +389,18 @@ class ListFragment(Fragment):
         # which adds/removes/updates all the child fragments
         self._watchers["list"] = watch_effect(update_children)
 
+        # FIXME
+        # When re-mounting a list (so a v-for within a v-if), the fragments
+        # might still exist so they need to be mounted again.
+        # But the actual problem is that the control flow fragment should
+        # maybe really destroy the underlying tree? But then how to build it
+        # up again? :/ I guess that information should already be available, right???
+        for child in self.children:
+            if not child.element:
+                child.mount(target, anchor=self.anchor())
+
+        # TODO: detect whether a keyed list is used?
         # TODO: for keyed lists: watch a list of keys instead of indices
-        # TODO: but maybe first detect whether a keyed list is used?
 
 
 class ComponentFragment(Fragment):
