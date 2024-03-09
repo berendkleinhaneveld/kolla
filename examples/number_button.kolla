@@ -1,0 +1,55 @@
+
+<mesh
+  :geometry="geometry"
+  :material="material()"
+  :world.position="position"
+  :world.scale="scale"
+  @click="on_pressed"
+  @pointer_enter="lambda ev: self.hover(True)"
+  @pointer_leave="lambda ev: self.hover(False)"
+/>
+
+<script>
+import pygfx as gfx
+from wgpu.gui.auto import call_later
+
+import kolla
+
+
+geometry = gfx.box_geometry()
+materials = {
+    "default": gfx.MeshPhongMaterial(color=[1.0, 0.5, 0.0]),
+    "pressed": gfx.MeshPhongMaterial(color=[0.0, 0.5, 0.0]),
+    "hovered": gfx.MeshPhongMaterial(color=[1.0, 0.2, 0.0]),
+}
+
+
+class Button(kolla.Component):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.state["pressed"] = False
+        self.state["hovered"] = False
+        self.state["scale"] = self.props.get("scale", [0.85] * 3)
+
+    def on_pressed(self, event):
+        def release():
+            self.state["pressed"] = False
+
+        self.state["pressed"] = True
+        call_later(2, release)
+
+    def hover(self, hover):
+        self.state["hovered"] = hover
+
+    def material(self):
+        return (
+            materials["pressed"]
+            if self.state["pressed"]
+            else (
+                materials["hovered"]
+                if self.state["hovered"]
+                else materials["default"]
+            )
+        )
+
+</script>
