@@ -1,12 +1,11 @@
-import logging
 from collections import defaultdict
+import logging
 from typing import Any, Callable
 
 from PySide6 import QtCore, QtGui, QtWidgets
-from PySide6.QtWidgets import QBoxLayout, QFormLayout, QGridLayout, QWidget
 
 from kolla.types import EventLoopType
-
+from . import Renderer
 from .pyside.objects import (
     combobox,
     dialogbuttonbox,
@@ -16,6 +15,7 @@ from .pyside.objects import (
     menu,
     menubar,
     qobject,
+    scrollarea,
     splitter,
     standarditem,
     statusbar,
@@ -27,13 +27,13 @@ from .pyside.objects import (
     window,
 )
 from .pyside.utils import (
-    DEFAULT_ARGS,
-    TYPE_MAPPING,
     attr_name_to_method_name,
     camel_case,
+    DEFAULT_ARGS,
     name_to_type,
+    TYPE_MAPPING,
 )
-from .renderer import Renderer
+
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +64,7 @@ INSERT_MAPPING = sorted_on_class_hierarchy(
         QtWidgets.QDockWidget: dockwidget.insert,
         QtWidgets.QTreeWidget: treewidget.insert,
         QtWidgets.QTreeWidgetItem: treewidgetitem.insert,
+        QtWidgets.QScrollArea: scrollarea.insert,
     }
 )
 REMOVE_MAPPING = sorted_on_class_hierarchy(
@@ -82,6 +83,7 @@ REMOVE_MAPPING = sorted_on_class_hierarchy(
         QtWidgets.QDockWidget: dockwidget.remove,
         QtWidgets.QTreeWidget: treewidget.remove,
         QtWidgets.QTreeWidgetItem: treewidgetitem.remove,
+        QtWidgets.QScrollArea: scrollarea.remove,
     }
 )
 SET_ATTR_MAPPING = sorted_on_class_hierarchy(
@@ -103,12 +105,6 @@ WRAPPED_TYPES = {}
 
 DEFAULT_VALUES = {}
 
-LAYOUT = {
-    "Box": QBoxLayout,
-    "Grid": QGridLayout,
-    "Form": QFormLayout,
-}
-
 
 def not_implemented(self, *args, **kwargs):
     raise NotImplementedError(type(self).__name__)
@@ -117,17 +113,16 @@ def not_implemented(self, *args, **kwargs):
 class EventFilter(QtCore.QObject):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.event_handlers = defaultdict(set)
+        self._event_handlers = defaultdict(set)
 
     def add_event_handler(self, event, handler):
-        self.event_handlers[event].add(handler)
+        self._event_handlers[event].add(handler)
 
     def remove_event_handler(self, event, handler):
-        self.event_handlers[event].remove(handler)
+        self._event_handlers[event].remove(handler)
 
     def eventFilter(self, obj, event):  # noqa: N802
-        event_name = event.type().name.decode()
-        if handlers := self.event_handlers[event_name]:
+        if handlers := self._event_handlers[event.type().name]:
             for handler in handlers.copy():
                 handler(event)
 
@@ -149,14 +144,22 @@ class PySideRenderer(Renderer):
         self.autoshow = autoshow
 
     def preferred_event_loop_type(self):
-        return EventLoopType.QT
+        return EventLoopType.DEFAULT
+
+    def register_asyncio(self):
+        import asyncio
+        from PySide6.QtAsyncio import QAsyncioEventLoopPolicy
+
+        policy = asyncio.get_event_loop_policy()
+        if not isinstance(policy, QAsyncioEventLoopPolicy):
+            asyncio.set_event_loop_policy(QAsyncioEventLoopPolicy())
 
     def register(self, type_name, custom_type):
         # Check that the custom type is a subclass of QWidget.
         # This ensures that the custom widget can be properly wrapped
         # and will get the `insert`, `remove` and `set_attribute`
         # methods.
-        if QWidget not in custom_type.__mro__:
+        if QtWidgets.QWidget not in custom_type.__mro__:
             raise TypeError(f"Specified type '{custom_type}' not a subclass of QWidget")
         TYPE_MAPPING[type_name.lower()] = custom_type
 
@@ -248,7 +251,6 @@ class PySideRenderer(Renderer):
 
     def set_attribute(self, el: Any, attr: str, value: Any):
         """Set the attribute `attr` of the element `el` to the value `value`."""
-
         key = f"{type(el).__name__}.{attr}"
         if key not in DEFAULT_VALUES:
             if not hasattr(el, "metaObject"):
@@ -265,8 +267,6 @@ class PySideRenderer(Renderer):
                 else:
                     logger.debug(f"'{attr}' is not a Qt property on {type(el)}")
 
-        # Support a custom attribute 'layout_direction' so that we can
-        # set the layout direction of the layout of the given element
         el.set_attribute(attr, value)
 
     def remove_attribute(self, el: Any, attr: str, value: Any):

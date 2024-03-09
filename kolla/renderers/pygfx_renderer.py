@@ -1,6 +1,6 @@
 import pygfx as gfx
 
-from .renderer import Renderer
+from . import Renderer
 
 ELEMENT_TYPE_CACHE = {}
 DEFAULT_ATTR_CACHE = {}
@@ -9,9 +9,18 @@ DEFAULT_ATTR_CACHE = {}
 class PygfxRenderer(Renderer):
     """Renderer for Pygfx objects"""
 
+    def register_asyncio(self):
+        import asyncio
+
+        from PySide6.QtAsyncio import QAsyncioEventLoopPolicy
+
+        policy = asyncio.get_event_loop_policy()
+        if not isinstance(policy, QAsyncioEventLoopPolicy):
+            asyncio.set_event_loop_policy(QAsyncioEventLoopPolicy())
+
     def create_element(self, type: str) -> gfx.WorldObject:
         """Create pygfx element for the given type"""
-        type = type.lower()
+        type = type.lower().replace("-", "")
         if element_type := ELEMENT_TYPE_CACHE.get(type):
             return element_type()
 
@@ -42,21 +51,18 @@ class PygfxRenderer(Renderer):
         raise NotImplementedError
 
     def set_attribute(self, obj, attr, value):
-        if isinstance(obj, gfx.WorldObject):
-            if attr in {"position", "scale"}:
-                value = gfx.linalg.Vector3(*value)
-            elif attr == "rotation":
-                value = gfx.linalg.Quaternion(*value)
-            elif attr == "matrix":
-                value = gfx.linalg.Matrix4(*value)
-
         key = f"{type(obj).__name__}.{attr}"
+
+        # Split the given attr on dots to allow for
+        # local.position for instance to be set
+        *attrs, attr = attr.split(".")
+        for attribute in attrs:
+            obj = getattr(obj, attribute)
+
         if key not in DEFAULT_ATTR_CACHE:
             if hasattr(obj, attr):
                 default_value = getattr(obj, attr)
-                if hasattr(default_value, "clone"):
-                    DEFAULT_ATTR_CACHE[key] = default_value.clone()
-                elif hasattr(default_value, "copy"):
+                if hasattr(default_value, "copy"):
                     DEFAULT_ATTR_CACHE[key] = default_value.copy()
                 else:
                     DEFAULT_ATTR_CACHE[key] = default_value
@@ -65,11 +71,16 @@ class PygfxRenderer(Renderer):
 
     def remove_attribute(self, obj, attr, value):
         key = f"{type(obj).__name__}.{attr}"
+
+        # Split the given attr on dots to allow for
+        # local.position for instance to be set
+        *attrs, attr = attr.split(".")
+        for attribute in attrs:
+            obj = getattr(obj, attribute)
+
         if key in DEFAULT_ATTR_CACHE:
             default_value = DEFAULT_ATTR_CACHE[key]
-            if hasattr(default_value, "clone"):
-                val = default_value.clone()
-            elif hasattr(default_value, "copy"):
+            if hasattr(default_value, "copy"):
                 val = default_value.copy()
             else:
                 val = default_value

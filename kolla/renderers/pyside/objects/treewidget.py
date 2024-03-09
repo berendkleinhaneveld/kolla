@@ -1,7 +1,6 @@
 from PySide6.QtWidgets import QTreeWidgetItem
 
-from .treewidgetitem import insert as item_insert
-from .treewidgetitem import remove as item_remove
+from .treewidgetitem import insert as item_insert, remove as item_remove
 
 
 def insert(self, el: QTreeWidgetItem, anchor=None):

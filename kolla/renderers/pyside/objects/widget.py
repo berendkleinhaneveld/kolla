@@ -7,8 +7,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..utils import attr_name_to_method_name, call_method
 from .qobject import set_attribute as qobject_set_attribute
+from ..utils import attr_name_to_method_name, call_method
 
 logger = logging.getLogger(__name__)
 
@@ -49,13 +49,17 @@ def insert(self, el, anchor=None):
     if hasattr(layout, "insertWidget"):
         layout.insertWidget(index, el)
     else:
-        raise NotImplementedError
+        raise NotImplementedError(f"Can't insert {el} into {self} ({layout})")
 
 
 def remove(self, el):
     layout = self.layout()
-    layout.removeWidget(el)
-    el.setParent(None)
+    if isinstance(layout, QFormLayout):
+        # Layout also deletes 'el' so no need to unset parent
+        layout.removeRow(el)
+    else:
+        layout.removeWidget(el)
+        el.setParent(None)
 
 
 def set_attribute(self, attr, value):
