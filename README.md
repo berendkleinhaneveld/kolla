@@ -4,9 +4,9 @@ Reactive user interfaces.
 
 > The word [Kollay](https://en.wikipedia.org/wiki/Kollay) is derived from the Greek word _koll_ or _kolla_, meaning glue, and graph, meaning the activity of drawing.
 
-Unholy marriage of concepts from [Svelte](https://svelte.dev), [Vue](https://vuejs.org) and [Collagraph](https://github.com/fork-tongue/collagraph).
+Unholy marriage of concepts from [Svelte](https://svelte.dev), [Solid][https://solidjs.com], [Vue](https://vuejs.org) and [Collagraph](https://github.com/fork-tongue/collagraph).
 
-* 'No virtual DOM approach' from Svelte
+* 'No virtual DOM approach' with fine-grained reactivity (like Svelte and Solid) 
 * Syntax for SFC (`.kolla`) from Vue
 * Renderers from Collagraph (PySide6, Pygfx, PyScript)
 
