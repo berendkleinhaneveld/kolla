@@ -9,13 +9,14 @@ readme = "README.md"
 
 [tool.poetry.extras]
 pygfx = ["pygfx"]
-pyside = ["pyside6_essentials"]
+pyside = ["pyside6"]
 
 [tool.poetry.dependencies]
 python = ">=3.9"
-observ = ">=0.14.1"
-pygfx = { version = ">=0.1.9", optional = true }
-pyside6_essentials = { version = "^6.6", python = "<3.13", optional = true }
+# observ = ">=0.14.1"
+observ = { path = "../observ" }
+pygfx = { version = ">=0.1.17", optional = true }
+pyside6 = { version = "^6.6", python = "<3.13", optional = true }
 
 # TODO: add entry_point to be able to run kolla as module and render .kolla files directly
 # python -m kolla path/to/example.kolla
