@@ -27,6 +27,8 @@ class DictRenderer(Renderer):
     def remove(self, el, parent):
         children = parent["children"]
         children.remove(el)
+        if not children:
+            del parent["children"]
 
     def set_element_text(self, el: dict, value: str):
         el["text"] = value

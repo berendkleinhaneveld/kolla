@@ -51,13 +51,14 @@ class Counter(kolla.Component):
 """
 Counter, module = sfc.load_from_string(source)
 
-# Create a Kolla instance with a PySide renderer 
-gui = kolla.Kolla(renderer=kolla.PySideRenderer())
-# Render the function component into a container 
-# (in this case the app but can be another widget)
-app = QtWidgets.QApplication()
-gui.render(Counter, app)
-app.exec()
+if __name__ == "__main__":
+    app = QtWidgets.QApplication()
+    # Create a Kolla instance with a PySide renderer 
+    gui = kolla.Kolla(renderer=kolla.PySideRenderer())
+    # Render the function component into a container 
+    # (in this case the app but can be another widget)
+    gui.render(Counter, app)
+    app.exec()
 ```
 
 For more examples, please take a look at the [examples folder](examples).
