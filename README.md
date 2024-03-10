@@ -7,7 +7,7 @@ Reactive user interfaces.
 Unholy marriage of concepts from [Svelte](https://svelte.dev), [Solid][https://solidjs.com], [Vue](https://vuejs.org) and [Collagraph](https://github.com/fork-tongue/collagraph).
 
 * 'No virtual DOM approach' with fine-grained reactivity (like Svelte and Solid) 
-* Syntax for SFC (`.kolla`) from Vue
+* Syntax for SFC (`.cgx`) from Vue
 * Renderers from Collagraph (PySide6, Pygfx, PyScript)
 
 
@@ -16,7 +16,7 @@ Unholy marriage of concepts from [Svelte](https://svelte.dev), [Solid][https://s
 Write your Python interfaces in a declarative manner with plain render functions, component classes or even single-file components using Svelte-like syntax, but with Python!
 
 * Reactivity (made possible by leveraging [observ](https://github.com/fork-tongue/observ))
-* Single-file components with Vue-like syntax (`.kolla` files)
+* Single-file components with Vue-like syntax (`.cgx` files)
 * Class components with local state and life-cycle methods/hooks
 * Custom renderers
 
@@ -27,7 +27,7 @@ from PySide6 import QtWidgets
 import kolla
 from kolla.sfc import sfc
 
-# The source normally resides in a .kolla file
+# The source normally resides in a .cgx file
 # which can be imported like any other python file
 # after the `import kolla` line. For this example
 # we'll just parse directly from a string.

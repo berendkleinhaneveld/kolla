@@ -17,8 +17,8 @@ observ = ">=0.14.1"
 pygfx = { version = ">=0.1.17", optional = true }
 pyside6 = { version = "^6.6", python = "<3.13", optional = true }
 
-# TODO: add entry_point to be able to run kolla as module and render .kolla files directly
-# python -m kolla path/to/example.kolla
+# TODO: add entry_point to be able to run kolla as module and render .cgx files directly
+# python -m kolla path/to/example.cgx
 
 [tool.poetry.group.dev.dependencies]
 black = "*"  # Only for debugging generated code

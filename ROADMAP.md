@@ -33,5 +33,5 @@
 - [ ] Render callback
 - [ ] Provide / inject (setContext, getContext)
 - [ ] Compile to file
-	- [ ] Auto-update when .kolla file changed
-- [ ] Directly run `.kolla` files
+	- [ ] Auto-update when `.cgx` file changed
+- [ ] Directly run `.cgx` files

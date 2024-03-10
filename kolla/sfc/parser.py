@@ -2,7 +2,7 @@ from html.parser import HTMLParser
 
 
 class Node:
-    """Node that represents an element from a .kolla file."""
+    """Node that represents an element from a .cgx file."""
 
     def __init__(self, tag, attrs=None, location=None):
         super().__init__()
@@ -20,7 +20,7 @@ class Node:
 
 
 class KollaParser(HTMLParser):
-    """Parser for .kolla files.
+    """Parser for .cgx files.
 
     Creates a tree of Nodes with all encountered attributes and data.
     """

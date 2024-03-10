@@ -18,14 +18,14 @@ DIRECTIVE_FOR = f"{DIRECTIVE_PREFIX}for"
 DIRECTIVE_ON = f"{DIRECTIVE_PREFIX}on"
 CONTROL_FLOW_DIRECTIVES = (DIRECTIVE_IF, DIRECTIVE_ELSE_IF, DIRECTIVE_ELSE)
 
-SUFFIX = "kolla"
+SUFFIX = "cgx"
 
 
 def load(path):
     """
-    Loads and returns a component from a .kolla file.
+    Loads and returns a component from a .cgx file.
 
-    A subclass of Component will be created from the .kolla file
+    A subclass of Component will be created from the .cgx file
     where the contents of the <template> tag will be used as
     the `render` function, while the contents of the <script>
     tag will be used to provide the rest of the functions of
@@ -84,7 +84,7 @@ def construct_ast(path, template=None):
     """
     Returns a tuple of the constructed AST tree and name of (enhanced) component class.
 
-    Construct an AST from the .kolla file by first creating an AST from the script tag,
+    Construct an AST from the .cgx file by first creating an AST from the script tag,
     and then compile the contents of the template tag and insert that into the component
     class definition as `render` function.
     """
@@ -144,7 +144,7 @@ def construct_ast(path, template=None):
 
 def get_script_ast(parser: KollaParser, path: Path):
     """
-    Returns the AST created from the script tag in the .kolla file.
+    Returns the AST created from the script tag in the .cgx file.
     """
     # Read the data from script block
     script_node = parser.root.child_with_tag("script")
@@ -153,7 +153,7 @@ def get_script_ast(parser: KollaParser, path: Path):
 
     # Create an AST from the script
     script_tree = ast.parse(script, filename=str(path), mode="exec")
-    # Make sure that the lineno's match up with the lines in the .kolla file
+    # Make sure that the lineno's match up with the lines in the .cgx file
     ast.increment_lineno(script_tree, n=line)
     return script_tree
 

@@ -3,7 +3,7 @@ from PySide6 import QtWidgets
 import kolla
 from kolla.sfc import sfc
 
-# The source normally resides in a .kolla file
+# The source normally resides in a .cgx file
 # which can be imported like any other python file
 # after the `import kolla` line. For this example
 # we'll just parse directly from a string.
