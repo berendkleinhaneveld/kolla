@@ -1,0 +1,10 @@
+<node :name="props.get('name')">
+  <slot />
+</node>
+
+<script lang="python">
+import kolla
+
+class Node(kolla.Component):
+    pass
+</script>

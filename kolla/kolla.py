@@ -41,3 +41,11 @@ class Kolla:
         # into the target (DOM) element
         self.fragment = component.render(self.renderer)
         self.fragment.mount(target)
+        # breakpoint()
+
+
+def print_fragments(fragment, depth=0):
+    indent = depth * "  "
+    print(f"{indent}{fragment}")  # noqa: T201
+    for child in fragment.children:
+        print_fragments(child, depth=depth + 1)

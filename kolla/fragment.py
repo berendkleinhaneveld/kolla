@@ -43,6 +43,8 @@ class Fragment:
         self.element: DomElement = None
         # Target dom-element to render in
         self.target: DomElement = None
+        # Name of slot to be rendered into
+        self.slot_name: str | None = None
 
         # Weak ref to parent fragment
         self._parent: ref[Fragment] | None = ref(parent) if parent else None
@@ -60,12 +62,17 @@ class Fragment:
         # relationship between this item and its parent
         # is set correctly
         if parent:
-            parent.children.append(self)
+            if isinstance(parent, ComponentFragment) and parent.tag is not None:
+                # print("")
+                pass
+            #
+            parent.register_child(self)
+            # parent.children.append(self)
 
         # FIXME: should fragments also be able to be 'anchored'???
 
     def __repr__(self):
-        return f"<{type(self).__name__}({self.tag}[{id(self)}])>"
+        return f"<{type(self).__name__}({self.tag}-[{id(self)}])>"
 
     @property
     def parent(self) -> Fragment | None:
@@ -76,6 +83,9 @@ class Fragment:
         # TODO: should this also check that this item is
         # now in the list of the parent's children?
         self._parent = ref(parent) if parent else None
+
+    def register_child(self, child: Fragment) -> None:
+        self.children.append(child)
 
     def first(self) -> DomElement | None:
         """
@@ -203,7 +213,7 @@ class Fragment:
         Creates instance, depending on whether there is
         an expression
         """
-        if self.tag == "template":
+        if self.tag == "template" or self.tag is None:
             return
 
         # Create the element
@@ -409,7 +419,16 @@ class ComponentFragment(Fragment):
         self.component: Component = None
         self.fragment: Fragment = None
         self.props: Proxy | None = props
+        self.slots: dict = {}
+        self.slot_contents = []
         assert "tag" not in kwargs or callable(kwargs["tag"])
+
+    def register_child(self, child: Fragment) -> None:
+        if self.tag:
+            # breakpoint()
+            self.slot_contents.append(child)
+        else:
+            self.children.append(child)
 
     def create(self):
         if self.tag is None:
@@ -440,10 +459,21 @@ class ComponentFragment(Fragment):
         self.create()
 
         if self.fragment:
+            # If there are children for this component fragment, then
+            # those children have to be slots! If they don't have a slot
+            # name defined, then they are assumed to be rendered in the
+            # 'default' slot
+            # if self.children and self.slots:
+            #     breakpoint()
+            #     for slot_name, fragment in self.slots.items():
+            #         fragment.mount(target, anchor)
             self.fragment.mount(target, anchor)
         else:
             for child in self.children:
                 child.mount(self.element or target, anchor)
+
+    def register_slot(self, name, fragment: SlotFragment):
+        self.slots[name] = fragment
 
     def _set_attr(self, attr, value):
         self.props[attr] = value
@@ -456,3 +486,49 @@ class ComponentFragment(Fragment):
 
     def _has_content(self):
         return bool(self.props)
+
+
+class SlotFragment(Fragment):
+    """
+    Fragment that describes a 'slot' element
+
+    Problem with this: mounting works on 'this' item, which means that
+    it only controls this instance, and not its children...
+    So if we need another layer of abstraction to (conditionally) mount
+    a subtree, we'll need a different mechanism. Probably.
+
+    Instead of 'mounting' an element, we could for instance 'attach' an
+    element to its parent. So basically we ask the parent to mount/unmount
+    the current element. The parent can then redirect the actual mounting
+    to wherever it is actually needed?
+
+
+    """
+
+    def __init__(self, *args, name, tag=None, props=None, **kwargs):
+        super().__init__(*args, tag=None, **kwargs)
+        self.name = name
+
+        parent = self.parent
+        while parent.parent:
+            parent = parent.parent
+
+        assert isinstance(parent, ComponentFragment)
+        assert parent.tag is None
+        self.parent_component = parent
+        self.parent_component.register_slot(name, self)
+
+    def set_attribute(self, attr: str, value: Any):
+        # name is a reserved attribute for slots
+        if attr != "name":
+            super().set_attribute(attr, value)
+
+    def mount(self, target: DomElement, anchor: DomElement | None = None):
+        component_parent = self.parent_component.parent
+        if component_parent.slot_contents:
+            for item in component_parent.slot_contents:
+                # breakpoint()
+                if item.slot_name == self.name:
+                    item.mount(target, anchor)
+        else:
+            super().mount(target, anchor)

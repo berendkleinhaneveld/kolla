@@ -1,6 +1,7 @@
 import ast
 import logging
 from collections import defaultdict
+from os import environ
 from pathlib import Path
 
 from kolla import Component
@@ -16,9 +17,12 @@ DIRECTIVE_ELSE_IF = f"{DIRECTIVE_PREFIX}else-if"
 DIRECTIVE_ELSE = f"{DIRECTIVE_PREFIX}else"
 DIRECTIVE_FOR = f"{DIRECTIVE_PREFIX}for"
 DIRECTIVE_ON = f"{DIRECTIVE_PREFIX}on"
+DIRECTIVE_SLOT = f"{DIRECTIVE_PREFIX}slot"
 CONTROL_FLOW_DIRECTIVES = (DIRECTIVE_IF, DIRECTIVE_ELSE_IF, DIRECTIVE_ELSE)
 
 SUFFIX = "cgx"
+
+DEBUG = bool(environ.get("KOLLA_DEBUG", False))
 
 
 def load(path):
@@ -126,6 +130,11 @@ def construct_ast(path, template=None):
     )
     ast.fix_missing_locations(render_tree)
 
+    if DEBUG:
+        try:
+            _print_ast_tree_as_code(render_tree)
+        except Exception as e:
+            logger.warning("Could not unparse AST", exc_info=e)
 
     # Put location of render function outside of the script tag
     # This makes sure that the render function can be excluded
@@ -142,7 +151,7 @@ def construct_ast(path, template=None):
     return script_tree, component_def.name
 
 
-def get_script_ast(parser: KollaParser, path: Path):
+def get_script_ast(parser: KollaParser, path: Path) -> ast.Module:
     """
     Returns the AST created from the script tag in the .cgx file.
     """
@@ -158,7 +167,9 @@ def get_script_ast(parser: KollaParser, path: Path):
     return script_tree
 
 
-def ast_create_fragment(el, tag, is_component, parent=None):
+def ast_create_fragment(
+    el: str, tag: str, is_component: bool, parent: str | None = None, node: Node = None
+) -> ast.Assign:
     """
     Return AST for creating an element with `tag` and
     assigning it to variable name: `el`
@@ -175,12 +186,18 @@ def ast_create_fragment(el, tag, is_component, parent=None):
         keywords.append(
             ast.keyword(arg="parent", value=ast.Name(id=parent, ctx=ast.Load()))
         )
+    fragment_type = "Fragment"
+    if is_component:
+        fragment_type = "ComponentFragment"
+    if tag == "slot":
+        # TODO: register this slot fragment with the parent component
+        fragment_type = "SlotFragment"
+        slot_name = node.attrs.get("name", "default")
+        keywords.append(ast.keyword(arg="name", value=ast.Constant(value=slot_name)))
     return ast.Assign(
         targets=[ast.Name(id=el, ctx=ast.Store())],
         value=ast.Call(
-            func=ast.Name(
-                id="ComponentFragment" if is_component else "Fragment", ctx=ast.Load()
-            ),
+            func=ast.Name(id=fragment_type, ctx=ast.Load()),
             args=[
                 ast.Name(id="renderer", ctx=ast.Load()),
             ],
@@ -189,7 +206,9 @@ def ast_create_fragment(el, tag, is_component, parent=None):
     )
 
 
-def ast_set_attribute(el, key, value):
+def ast_set_attribute(
+    el: str, key: str, value: str | int | float | tuple | None
+) -> ast.Expr:
     return ast.Expr(
         value=ast.Call(
             func=ast.Attribute(
@@ -203,7 +222,20 @@ def ast_set_attribute(el, key, value):
     )
 
 
-def ast_named_lambda(source: str, names: set, list_names: list) -> ast.Expr:
+def ast_set_slot_name(el: str, name: str) -> ast.Assign:
+    return ast.Assign(
+        targets=[
+            ast.Attribute(
+                value=ast.Name(id=el, ctx=ast.Load()),
+                attr="slot_name",
+                ctx=ast.Store(),
+            )
+        ],
+        value=ast.Constant(value=name),
+    )
+
+
+def ast_named_lambda(source: str, names: set[str], list_names: list[str]) -> ast.Expr:
     lambda_names = LambdaNamesCollector()
     lambda_names.visit(source)
     return ast.Expr(
@@ -215,7 +247,9 @@ def ast_named_lambda(source: str, names: set, list_names: list) -> ast.Expr:
     )
 
 
-def ast_set_dynamic_type(el: str, value: str, names: set, list_names: list) -> ast.Expr:
+def ast_set_dynamic_type(
+    el: str, value: str, names: set[str], list_names: list[str]
+) -> ast.Expr:
     source = ast.parse(f"{el}.set_type(lambda: {value})", mode="eval")
     return ast_named_lambda(
         source, {"renderer", "new", el, "watch"} | names, list_names
@@ -223,7 +257,7 @@ def ast_set_dynamic_type(el: str, value: str, names: set, list_names: list) -> a
 
 
 def ast_set_bind(
-    el: str, key: str, value: str, names: set, list_names: list
+    el: str, key: str, value: str, names: set[str], list_names: list[str]
 ) -> ast.Expr:
     _, key = key.split(":")
     source = ast.parse(f'{el}.set_bind("{key}", lambda: ({value}))', mode="eval")
@@ -232,7 +266,9 @@ def ast_set_bind(
     )
 
 
-def ast_set_bind_dict(el: str, value: str, names: set, list_names: list):
+def ast_set_bind_dict(
+    el: str, value: str, names: set[str], list_names: list[str]
+) -> ast.Expr:
     source = ast.parse(f"{el}.set_bind_dict('{value}', lambda: {value})", mode="eval")
     return ast_named_lambda(
         source, {"renderer", "new", el, "watch"} | names, list_names
@@ -240,7 +276,7 @@ def ast_set_bind_dict(el: str, value: str, names: set, list_names: list):
 
 
 def ast_set_event(
-    el: str, key: str, value: str, names: set, list_names: list
+    el: str, key: str, value: str, names: set[str], list_names: list[str]
 ) -> ast.Expr:
     split_char = "@" if key.startswith("@") else ":"
     _, key = key.split(split_char)
@@ -263,7 +299,9 @@ def ast_set_event(
     )
 
 
-def ast_set_condition(child, condition, names, list_names):
+def ast_set_condition(
+    child: str, condition: str, names: set[str], list_names: list[str]
+) -> ast.Expr:
     condition_ast = ast.parse(f"lambda: bool({condition})", mode="eval")
     RewriteName(skip=names, list_names=list_names).visit(condition_ast)
 
@@ -280,7 +318,7 @@ def ast_set_condition(child, condition, names, list_names):
     )
 
 
-def ast_create_control_flow(name, parent):
+def ast_create_control_flow(name: str, parent: str) -> ast.Assign:
     return ast.Assign(
         targets=[ast.Name(id=name, ctx=ast.Store())],
         value=ast.Call(
@@ -298,8 +336,7 @@ def ast_create_control_flow(name, parent):
     )
 
 
-def ast_create_list_fragment(name, parent, expression):
-    # TODO: figure out how to treat the expression
+def ast_create_list_fragment(name: str, parent: str) -> ast.Assign:
     return ast.Assign(
         targets=[ast.Name(id=name, ctx=ast.Store())],
         value=ast.Call(
@@ -317,7 +354,7 @@ def ast_create_list_fragment(name, parent, expression):
     )
 
 
-def create_kolla_render_function(node, names):
+def create_kolla_render_function(node: Node, names: set[str]) -> ast.FunctionDef:
     body: list[ast.Assign | ast.Expr | ast.Return] = []
     body.append(
         ast.ImportFrom(
@@ -342,6 +379,7 @@ def create_kolla_render_function(node, names):
                 ast.alias(name="ComponentFragment"),
                 ast.alias(name="ListFragment"),
                 ast.alias(name="Fragment"),
+                ast.alias(name="SlotFragment"),
             ],
             level=0,
         )
@@ -482,7 +520,7 @@ def create_kolla_render_function(node, names):
                     counter["list"] += 1
                     # Reset any control flow that came before
                     control_flow_parent = None
-                    result.append(ast_create_list_fragment(name, parent, expression))
+                    result.append(ast_create_list_fragment(name, parent))
                     expr = f"[None for {expression}]"
                     expression_ast = ast.parse(expr).body[0].value
                     targets: ast.Name | ast.Tuple = expression_ast.generators[0].target
@@ -580,6 +618,19 @@ def create_kolla_render_function(node, names):
                     condition = ast_set_condition(el, value, names, list_names)
                 elif key == DIRECTIVE_ELSE:
                     pass
+                elif key.startswith((DIRECTIVE_SLOT, "#")):
+                    # TODO: how about top-level items that don't have 'slot' defined?
+                    if key == DIRECTIVE_SLOT:
+                        slot_name = "default"
+                    elif key.startswith(DIRECTIVE_SLOT):
+                        _, slot_name = key.split(":")
+                    elif key.startswith("#"):
+                        _, slot_name = key.split("#")
+                    attributes.append(ast_set_slot_name(el, slot_name))
+                elif key == DIRECTIVE_FOR:
+                    pass
+                else:
+                    raise NotImplementedError(key)
 
             result.append(
                 ast_create_fragment(
@@ -587,6 +638,7 @@ def create_kolla_render_function(node, names):
                     child.tag,
                     is_component=child.tag in names,
                     parent=control_flow_parent or parent,
+                    node=child,
                 )
             )
             if condition:
@@ -618,7 +670,7 @@ def create_kolla_render_function(node, names):
 
 
 def is_directive(key):
-    return key.startswith((DIRECTIVE_PREFIX, ":", "@"))
+    return key.startswith((DIRECTIVE_PREFIX, ":", "@", "#"))
 
 
 def targets_for_list_expression(targets: ast.Name | ast.Tuple) -> set[str]:
