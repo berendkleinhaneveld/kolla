@@ -27,13 +27,14 @@
 	- [X] Default slot
 	- [X] Named slots
 	- [X] Fallback content
+	- [ ] Dynamic content (v-if/v-for)
 	- [ ] Dynamic slot name (v-slot:[slotName])
 	- [ ] Scoped slots (slot props)
 - [ ] Component life cycle
 	- [ ] mounted
 	- [ ] updated
 	- [ ] before_unmount
-- [ ] Component events / emit
+- [X] Component events / emit
 - [ ] Provide / inject (setContext, getContext)
 - [ ] Compile to file
 	- [ ] Auto-update when `.cgx` file changed

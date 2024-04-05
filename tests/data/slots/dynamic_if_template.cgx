@@ -1,0 +1,14 @@
+<Node>
+  <template>
+    <content v-if="show_content" />
+  </template>
+</Node>
+
+<script lang="python">
+import kolla
+from tests.data.slots.node import Node
+
+
+class Tree(kolla.Component):
+    pass
+</script>
