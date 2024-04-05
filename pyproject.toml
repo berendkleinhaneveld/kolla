@@ -21,8 +21,8 @@ pyside6 = { version = "^6.6", python = "<3.13", optional = true }
 # python -m kolla path/to/example.cgx
 
 [tool.poetry.group.dev.dependencies]
-black = "*"  # Only for debugging generated code
-ruff = "*"
+black = "*"  # Only for debugging generated code, ruff is used for formatting
+mypy = "*"
 pre-commit = "*"
 pytest = "*"
 pytest-cov = "*"
@@ -30,6 +30,7 @@ pytest-qt = "*"
 pytest-random-order = "*"
 pytest-xvfb = "*"
 rich = {version = "*", python = "<4.0"}
+ruff = "*"
 
 [tool.coverage.run]
 omit = [

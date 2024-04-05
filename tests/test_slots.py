@@ -1,3 +1,6 @@
+import pytest
+from observ import reactive
+
 from kolla import EventLoopType, Kolla
 from kolla.renderers import DictRenderer
 from kolla.renderers.dict_renderer import format_dict
@@ -157,34 +160,44 @@ def test_cgx_slots_tree():
     assert a["children"][0]["attrs"]["name"] == "b"
 
 
-def test_cgx_slots_simple_tree():
-    from tests.data.slots.simple_tree import Tree
+@pytest.mark.xfail
+def test_cgx_slots_dynamic_if():
+    # TODO: write test that dynamically adds/removes
+    # slot content (v-if, v-for)
+    from tests.data.slots.dynamic_if import Tree
+
+    state = reactive({"show_content": False})
 
     gui = Kolla(DictRenderer(), event_loop_type=EventLoopType.SYNC)
     container = {"type": "container"}
-    gui.render(Tree, container)
+    gui.render(Tree, container, state)
 
-    node = container["children"][0]
-    assert node["type"] == "node"
+    root = container["children"][0]
+    assert root["type"] == "node"
+    assert "children" not in root
 
-    assert "children" in node, format_dict(container)
-    content = node["children"][0]
+    state["show_content"] = True
 
-    assert content["type"] == "content"
-
-    # TODO:
-    """
-    NTS: I think that the solution to slots should be compatible with the way
-    conditional directives are implemented. That means that the solution lies
-    somewhere in the fragment.py Fragment::create|mount methods. But maybe
-    it will require some code in the node parsing system to introduce 'fake'
-    template nodes that surround unnamed root nodes, in order to group them
-    into one 'default'-named template node. This might make the code within
-    fragment.py easier to reason about.
-    """
+    assert "children" in root, format_dict(root)
 
 
-def test_cgx_slots_dynamic():
+@pytest.mark.xfail
+def test_cgx_slots_dynamic_for():
     # TODO: write test that dynamically adds/removes
     # slot content (v-if, v-for)
-    pass
+    from tests.data.slots.dynamic_for import Tree
+
+    state = reactive({"content": ["a", "b"]})
+
+    gui = Kolla(DictRenderer(), event_loop_type=EventLoopType.SYNC)
+    container = {"type": "container"}
+    gui.render(Tree, container, state)
+
+    root = container["children"][0]
+    assert root["type"] == "node"
+    assert "children" in root
+    assert len(root["children"]) == 2
+
+    state["content"].append("c")
+
+    assert len(root["children"]) == 3, format_dict(root)

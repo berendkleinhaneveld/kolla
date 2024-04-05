@@ -26,7 +26,7 @@ class Kolla:
 
     def render(
         self,
-        component_class: Callable[[dict], type(Component)],
+        component_class: Callable[[dict], type[Component]],
         target: Any,
         state=None,
     ):
@@ -41,7 +41,6 @@ class Kolla:
         # into the target (DOM) element
         self.fragment = component.render(self.renderer)
         self.fragment.mount(target)
-        # breakpoint()
 
 
 def print_fragments(fragment, depth=0):

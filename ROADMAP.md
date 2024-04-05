@@ -11,26 +11,29 @@
 	- [X] Bound attributes
 		- [X] Single attributes (v-bind: / :)
 		- [X] Bound dicts/objects (v-bind)
+		- [ ] Dynamic attribute name (v-bind:[attrName])
 - [ ] Text expressions
-- [ ] Directives
+- [X] Directives
 	- [X] v-if
 	- [X] v-else-if
 	- [X] v-else
-	- [/] v-for
+	- [X] v-for
 		- [X] non-keyed
 		- [ ] keyed
 	- [X] v-on / @ (events)
 		- [ ] Event modifiers
+		- [ ] Dynamic event name (v-on:[eventName])
 - [ ] Slots
-	- [ ] Default slot
-	- [ ] Named
-	- [ ] Default slot content
+	- [X] Default slot
+	- [X] Named slots
+	- [X] Fallback content
+	- [ ] Dynamic slot name (v-slot:[slotName])
+	- [ ] Scoped slots (slot props)
 - [ ] Component life cycle
 	- [ ] mounted
 	- [ ] updated
 	- [ ] before_unmount
 - [ ] Component events / emit
-- [ ] Render callback
 - [ ] Provide / inject (setContext, getContext)
 - [ ] Compile to file
 	- [ ] Auto-update when `.cgx` file changed

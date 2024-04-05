@@ -40,9 +40,9 @@ class Fragment:
         # List of child fragments
         self.children: list[Fragment] = []
         # Dom element (if any)
-        self.element: DomElement = None
+        self.element: DomElement | None = None
         # Target dom-element to render in
-        self.target: DomElement = None
+        self.target: DomElement | None = None
         # Name of slot to be rendered into
         self.slot_name: str | None = None
 

@@ -1,17 +1,24 @@
 from html.parser import HTMLParser
+from weakref import ref
 
 
 class Node:
     """Node that represents an element from a .cgx file."""
 
-    def __init__(self, tag, attrs=None, location=None):
+    def __init__(
+        self,
+        tag: str,
+        attrs: dict[str, str] | None = None,
+        location: tuple[int, int] | None = None,
+    ):
         super().__init__()
         self.tag = tag
         self.attrs = attrs or {}
         self.location = location
-        self.end = None
-        self.data = None
-        self.children = []
+        self.end: tuple[int, int] | None = None
+        self.data: str | None = None
+        self.children: list[Node] = []
+        self.parent: ref | None = None
 
     def child_with_tag(self, tag):
         for child in self.children:
@@ -30,7 +37,7 @@ class KollaParser(HTMLParser):
         self.root = Node("root")
         self.stack = [self.root]
 
-    def handle_starttag(self, tag, attrs):
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]):
         # The tag parameter is lower-cased by the HTMLParser.
         # In order to figure out whether the tag indicates
         # an imported class, we need the original casing for
@@ -41,7 +48,7 @@ class KollaParser(HTMLParser):
         complete_tag = self.get_starttag_text()
         index = complete_tag.lower().index(tag)
         original_tag = complete_tag[index : index + len(tag)]
-        node = Node(original_tag, dict(attrs), self.getpos())
+        node = Node(original_tag, attrs=dict(attrs), location=self.getpos())
 
         # Cast attributes that have no value to boolean (True)
         # so that they function like flags
@@ -51,17 +58,22 @@ class KollaParser(HTMLParser):
                 node.attrs[key] = True
 
         # Add item as child to the last on the stack
-        self.stack[-1].children.append(node)
+        parent = self.stack[-1]
+        parent.children.append(node)
+        node.parent = ref(parent)
         # Make the new node the last on the stack
         self.stack.append(node)
 
-    def handle_endtag(self, tag):
-        # TODO: pop it till popping the same tag in order to
+    def handle_endtag(self, tag: str):
+        # pop it till popping the same tag in order to
         # work around unclosed tags?
-        # Pop the stack
-        node = self.stack.pop()
-        node.end = self.getpos()
+        # Pop the stack until  (but not the root!)
+        while len(self.stack) > 1:
+            node = self.stack.pop()
+            node.end = self.getpos()
+            if node.tag.lower() == tag:
+                break
 
-    def handle_data(self, data):
+    def handle_data(self, data: str):
         if data.strip():
             self.stack[-1].data = data.strip()

@@ -38,10 +38,10 @@ class Element:
 class HTMLRenderer(Renderer):
     """Renderer that renders to a simple Element object that looks a lot like HTML"""
 
-    def create_element(self, type: str) -> dict:
+    def create_element(self, type: str) -> Element:
         return Element(type=type)
 
-    def create_text_element(self):
+    def create_text_element(self) -> Element:
         return Element(type="TEXT_ELEMENT")
 
     def insert(self, el: Element, parent: Element, anchor=None):

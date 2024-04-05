@@ -99,6 +99,8 @@ def construct_ast(path, template=None):
     parser = KollaParser()
     parser.feed(template)
 
+    check_parsed_tree(parser.root)
+
     # Get the AST from the script tag
     script_tree = get_script_ast(parser, path)
 
@@ -113,11 +115,13 @@ def construct_ast(path, template=None):
 
     # Find the last ClassDef and assume that it is the
     # component that is defined in the SFC
-    component_def = None
+    component_def: ast.ClassDef | None = None
     for node in reversed(script_tree.body):
         if isinstance(node, ast.ClassDef):
             component_def = node
             break
+    if not component_def:
+        raise RuntimeError(f"Could not find class definition in script: {path}")
 
     # Remove the script tag from the tree and process the rest
     script_node = parser.root.child_with_tag("script")
@@ -168,7 +172,11 @@ def get_script_ast(parser: KollaParser, path: Path) -> ast.Module:
 
 
 def ast_create_fragment(
-    el: str, tag: str, is_component: bool, parent: str | None = None, node: Node = None
+    el: str,
+    tag: str,
+    is_component: bool,
+    parent: str | None = None,
+    node: Node | None = None,
 ) -> ast.Assign:
     """
     Return AST for creating an element with `tag` and
@@ -192,8 +200,9 @@ def ast_create_fragment(
     if tag == "slot":
         # TODO: register this slot fragment with the parent component
         fragment_type = "SlotFragment"
-        slot_name = node.attrs.get("name", "default")
+        slot_name = node and node.attrs.get("name", "default") or "default"
         keywords.append(ast.keyword(arg="name", value=ast.Constant(value=slot_name)))
+
     return ast.Assign(
         targets=[ast.Name(id=el, ctx=ast.Store())],
         value=ast.Call(
@@ -235,7 +244,9 @@ def ast_set_slot_name(el: str, name: str) -> ast.Assign:
     )
 
 
-def ast_named_lambda(source: str, names: set[str], list_names: list[str]) -> ast.Expr:
+def ast_named_lambda(
+    source: ast.Expression, names: set[str], list_names: list[dict[str, set[str]]]
+) -> ast.Expr:
     lambda_names = LambdaNamesCollector()
     lambda_names.visit(source)
     return ast.Expr(
@@ -248,7 +259,7 @@ def ast_named_lambda(source: str, names: set[str], list_names: list[str]) -> ast
 
 
 def ast_set_dynamic_type(
-    el: str, value: str, names: set[str], list_names: list[str]
+    el: str, value: str, names: set[str], list_names: list[dict[str, set[str]]]
 ) -> ast.Expr:
     source = ast.parse(f"{el}.set_type(lambda: {value})", mode="eval")
     return ast_named_lambda(
@@ -257,7 +268,11 @@ def ast_set_dynamic_type(
 
 
 def ast_set_bind(
-    el: str, key: str, value: str, names: set[str], list_names: list[str]
+    el: str,
+    key: str,
+    value: str,
+    names: set[str],
+    list_names: list[dict[str, set[str]]],
 ) -> ast.Expr:
     _, key = key.split(":")
     source = ast.parse(f'{el}.set_bind("{key}", lambda: ({value}))', mode="eval")
@@ -267,7 +282,7 @@ def ast_set_bind(
 
 
 def ast_set_bind_dict(
-    el: str, value: str, names: set[str], list_names: list[str]
+    el: str, value: str, names: set[str], list_names: list[dict[str, set[str]]]
 ) -> ast.Expr:
     source = ast.parse(f"{el}.set_bind_dict('{value}', lambda: {value})", mode="eval")
     return ast_named_lambda(
@@ -276,7 +291,11 @@ def ast_set_bind_dict(
 
 
 def ast_set_event(
-    el: str, key: str, value: str, names: set[str], list_names: list[str]
+    el: str,
+    key: str,
+    value: str,
+    names: set[str],
+    list_names: list[dict[str, set[str]]],
 ) -> ast.Expr:
     split_char = "@" if key.startswith("@") else ":"
     _, key = key.split(split_char)
@@ -300,7 +319,7 @@ def ast_set_event(
 
 
 def ast_set_condition(
-    child: str, condition: str, names: set[str], list_names: list[str]
+    child: str, condition: str, names: set[str], list_names: list[dict[str, set[str]]]
 ) -> ast.Expr:
     condition_ast = ast.parse(f"lambda: bool({condition})", mode="eval")
     RewriteName(skip=names, list_names=list_names).visit(condition_ast)
@@ -336,7 +355,7 @@ def ast_create_control_flow(name: str, parent: str) -> ast.Assign:
     )
 
 
-def ast_create_list_fragment(name: str, parent: str) -> ast.Assign:
+def ast_create_list_fragment(name: str, parent: str | None) -> ast.Assign:
     return ast.Assign(
         targets=[ast.Name(id=name, ctx=ast.Store())],
         value=ast.Call(
@@ -355,7 +374,7 @@ def ast_create_list_fragment(name: str, parent: str) -> ast.Assign:
 
 
 def create_kolla_render_function(node: Node, names: set[str]) -> ast.FunctionDef:
-    body: list[ast.Assign | ast.Expr | ast.Return] = []
+    body: list[ast.stmt] = []
     body.append(
         ast.ImportFrom(
             module="observ",
@@ -396,13 +415,13 @@ def create_kolla_render_function(node: Node, names: set[str]) -> ast.FunctionDef
         )
     )
 
-    counter = defaultdict(int)
+    counter: dict[str, int] = defaultdict(int)
 
     def create_fragments_function(
         node: Node,
         targets: ast.Name | ast.Tuple,
         names: set,
-        list_names: list,
+        list_names: list[dict[str, set[str]]],
     ):
         fragment_name = f"{node.tag}{counter[node.tag]}"
         function_name = f"create_{fragment_name}"
@@ -483,12 +502,12 @@ def create_kolla_render_function(node: Node, names: set[str]) -> ast.FunctionDef
     # Create and add children
     def create_children(
         nodes: list[Node],
-        target: str,
+        target: str | None,
         names: set,
-        list_names: list,
+        list_names: list[dict[str, set[str]]],
         within_for_loop=False,
     ):
-        result = []
+        result: list[ast.stmt] = []
         control_flow_parent = None
         for child in nodes:
             # Create element name
@@ -503,9 +522,9 @@ def create_kolla_render_function(node: Node, names: set[str]) -> ast.FunctionDef
                 parent = None
 
             # Set static attributes and dynamic (bind) attributes
-            attributes = []
-            events = []
-            binds = []
+            attributes: list[ast.stmt] = []
+            binds: list[ast.stmt] = []
+            events: list[ast.stmt] = []
             condition = None
 
             node_with_list_expression = False
@@ -599,6 +618,7 @@ def create_kolla_render_function(node: Node, names: set[str]) -> ast.FunctionDef
                 # Reset the control flow parent
                 control_flow_parent = None
 
+            added_slot_name = False
             for key, value in child.attrs.items():
                 if not is_directive(key):
                     attributes.append(ast_set_attribute(el, key, value))
@@ -612,6 +632,8 @@ def create_kolla_render_function(node: Node, names: set[str]) -> ast.FunctionDef
                 elif key.startswith((DIRECTIVE_ON, "@")):
                     events.append(ast_set_event(el, key, value, names, list_names))
                 elif key == DIRECTIVE_IF:
+                    assert control_flow_parent is not None
+                    assert target is not None
                     result.append(ast_create_control_flow(control_flow_parent, target))
                     condition = ast_set_condition(el, value, names, list_names)
                 elif key == DIRECTIVE_ELSE_IF:
@@ -627,10 +649,21 @@ def create_kolla_render_function(node: Node, names: set[str]) -> ast.FunctionDef
                     elif key.startswith("#"):
                         _, slot_name = key.split("#")
                     attributes.append(ast_set_slot_name(el, slot_name))
+                    added_slot_name = True
                 elif key == DIRECTIVE_FOR:
                     pass
                 else:
                     raise NotImplementedError(key)
+
+            # Check if we need to mark the item as content for the default slot
+            if not added_slot_name:
+                if parent_node := (child.parent and child.parent()):
+                    # This assumes that the parent_node is a component if it starts
+                    # with an uppercase character
+                    # TODO: come up with a more solid solution for figuring out
+                    # whether the parent is a component
+                    if parent_node.tag and parent_node.tag[0].isupper():
+                        attributes.append(ast_set_slot_name(el, "default"))
 
             result.append(
                 ast_create_fragment(
@@ -681,7 +714,7 @@ def targets_for_list_expression(targets: ast.Name | ast.Tuple) -> set[str]:
         for val in value.elts:
             get_names(val, names)
 
-    names = set()
+    names: set[str] = set()
     get_names(targets, names)
     return names
 
@@ -691,7 +724,7 @@ class StoredNameCollector(ast.NodeVisitor):
     it encounters."""
 
     def __init__(self):
-        self.names = set()
+        self.names: set[str] = set()
 
     def visit_Name(self, node):  # noqa: N802
         if isinstance(node.ctx, ast.Store):
@@ -703,7 +736,7 @@ class NameCollector(ast.NodeVisitor):
     it encounters."""
 
     def __init__(self):
-        self.names = set()
+        self.names: set[str] = set()
 
     def visit_Name(self, node):  # noqa: N802
         self.names.add(node.id)
@@ -711,7 +744,7 @@ class NameCollector(ast.NodeVisitor):
 
 class LambdaNamesCollector(ast.NodeVisitor):
     def __init__(self):
-        self.names = set()
+        self.names: set[str] = set()
 
     def visit_Lambda(self, node):  # noqa: N802
         # For some reason the body of a lambda is not visited
@@ -729,8 +762,8 @@ class RewriteName(ast.NodeTransformer):
     a call to `_lookup` with the name of the node."""
 
     def __init__(self, skip, list_names):
-        self.skip = skip
-        self.list_names = list_names
+        self.skip: set[str] = skip
+        self.list_names: list[dict[str, set[str]]] = list_names
 
     def visit_Name(self, node):  # noqa: N802
         # Don't try and replace any item from the __builtins__
@@ -789,6 +822,23 @@ def control_flow(element):
     for attr in element.attrs:
         if attr in CONTROL_FLOW_DIRECTIVES:
             return attr
+
+
+def check_parsed_tree(node: Node):
+    # Only check whole trees starting at the root
+    assert node.tag == "root"
+
+    if len(node.children) < 2:
+        raise ValueError(
+            f"Expected at least 2 closed tags, found: {len(node.children)}"
+        )
+    number_of_script_tags_in_root = len(
+        [child for child in node.children if child.tag == "script"]
+    )
+    if number_of_script_tags_in_root != 1:
+        raise ValueError(
+            f"Expected exactly 1 script tag, found: {number_of_script_tags_in_root}"
+        )
 
 
 def _print_ast_tree_as_code(tree):  # pragma: no cover
