@@ -35,7 +35,7 @@
 	- [ ] updated
 	- [ ] before_unmount
 - [X] Component events / emit
-- [ ] Provide / inject (setContext, getContext)
+- [X] Provide / inject (setContext, getContext)
 - [ ] Compile to file
 	- [ ] Auto-update when `.cgx` file changed
 - [ ] Directly run `.cgx` files
