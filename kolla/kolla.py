@@ -40,6 +40,7 @@ class Kolla:
         # component.render() returns a fragment which is then mounted
         # into the target (DOM) element
         self.fragment = component.render(self.renderer)
+        self.fragment.component = component
         self.fragment.mount(target)
 
 

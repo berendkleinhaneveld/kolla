@@ -425,7 +425,6 @@ class ComponentFragment(Fragment):
 
     def register_child(self, child: Fragment) -> None:
         if self.tag:
-            # breakpoint()
             self.slot_contents.append(child)
         else:
             self.children.append(child)
@@ -445,7 +444,8 @@ class ComponentFragment(Fragment):
                 _, attr = key.split(":")
                 self.props[attr] = watcher.value
 
-        self.component = self.tag(self.props)
+        parent = self._component_parent()
+        self.component = self.tag(props=self.props, parent=parent)
         self.fragment = self.component.render(self.renderer)
         self.fragment.parent = self
         self.children.append(self.fragment)
@@ -454,19 +454,25 @@ class ComponentFragment(Fragment):
         for event, handler in self._events.items():
             self.component.add_event_handler(event, handler)
 
+    def _component_parent(self) -> Component | None:
+        """
+        Returns the component of the first parent ComponentFragment that
+        has a component property. Or None, if not there.
+        """
+        parent = self.parent
+        while parent and (
+            not isinstance(parent, ComponentFragment) or not parent.component
+        ):
+            parent = parent.parent
+
+        if parent:
+            return parent.component
+
     def mount(self, target: DomElement, anchor: DomElement | None = None):
         self.target = target
         self.create()
 
         if self.fragment:
-            # If there are children for this component fragment, then
-            # those children have to be slots! If they don't have a slot
-            # name defined, then they are assumed to be rendered in the
-            # 'default' slot
-            # if self.children and self.slots:
-            #     breakpoint()
-            #     for slot_name, fragment in self.slots.items():
-            #         fragment.mount(target, anchor)
             self.fragment.mount(target, anchor)
         else:
             for child in self.children:
