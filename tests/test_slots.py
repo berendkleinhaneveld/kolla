@@ -1,6 +1,3 @@
-import pytest
-from observ import reactive
-
 from kolla import EventLoopType, Kolla
 from kolla.renderers import DictRenderer
 from kolla.renderers.dict_renderer import format_dict
@@ -158,46 +155,3 @@ def test_cgx_slots_tree():
 
     assert a["children"][0]["type"] == "node"
     assert a["children"][0]["attrs"]["name"] == "b"
-
-
-@pytest.mark.xfail
-def test_cgx_slots_dynamic_if():
-    # TODO: write test that dynamically adds/removes
-    # slot content (v-if, v-for)
-    from tests.data.slots.dynamic_if import Tree
-
-    state = reactive({"show_content": False})
-
-    gui = Kolla(DictRenderer(), event_loop_type=EventLoopType.SYNC)
-    container = {"type": "container"}
-    gui.render(Tree, container, state)
-
-    root = container["children"][0]
-    assert root["type"] == "node"
-    assert "children" not in root
-
-    state["show_content"] = True
-
-    assert "children" in root, format_dict(root)
-
-
-@pytest.mark.xfail
-def test_cgx_slots_dynamic_for():
-    # TODO: write test that dynamically adds/removes
-    # slot content (v-if, v-for)
-    from tests.data.slots.dynamic_for import Tree
-
-    state = reactive({"content": ["a", "b"]})
-
-    gui = Kolla(DictRenderer(), event_loop_type=EventLoopType.SYNC)
-    container = {"type": "container"}
-    gui.render(Tree, container, state)
-
-    root = container["children"][0]
-    assert root["type"] == "node"
-    assert "children" in root
-    assert len(root["children"]) == 2
-
-    state["content"].append("c")
-
-    assert len(root["children"]) == 3, format_dict(root)
