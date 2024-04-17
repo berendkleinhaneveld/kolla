@@ -1,0 +1,13 @@
+<group name="Landmarks">
+  <AmbientLight />
+  <PointLight />
+  <PointCloud v-bind="props" />
+</group>
+
+<script>
+from kolla import Component
+from examples.pygfx.point_cloud import PointCloud
+
+class BasicScene(Component):
+    pass
+</script>

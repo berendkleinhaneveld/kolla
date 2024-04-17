@@ -1,0 +1,28 @@
+<mesh
+  :geometry="sphere_geom"
+  :material="materials[material]"
+  :local.position="position"
+  @click="set_selected()"
+  @pointer_move="set_hovered()"
+/>
+
+<script>
+import pygfx as gfx
+import kolla
+
+sphere_geom = gfx.sphere_geometry(radius=0.5)
+materials = {
+    "default": gfx.MeshPhongMaterial(color=[1, 1, 1]),
+    "selected": gfx.MeshPhongMaterial(color=[1, 0, 0]),
+    "hovered": gfx.MeshPhongMaterial(color=[1, 0.6, 0]),
+    "other": gfx.MeshPhongMaterial(color=[1, 0, 0.5]),
+}
+
+
+class Point(kolla.Component):
+    def set_selected(self):
+        self.emit("selected", self.props["index"])
+
+    def set_hovered(self):
+        self.emit("hovered", self.props["index"])
+</script>
