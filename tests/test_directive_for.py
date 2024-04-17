@@ -470,3 +470,62 @@ def test_consecutive_lists(parse_source):
     state["b"].insert(0, "w")
 
     assert_consistency()
+
+
+def test_for_regression(parse_source):
+    Counter, namespace = parse_source(
+        """
+        <counter
+          :count="count"
+        />
+        <script>
+        import kolla
+        class Counter(kolla.Component):
+            pass
+        </script>
+        """
+    )
+    Counters, namespace = parse_source(
+        """
+        <counters>
+          <Counter
+            v-for="i, prop in enumerate(props['counters'])"
+            v-bind="prop"
+            :idx="i"
+          />
+        </counters>
+
+        <script>
+        import kolla
+
+        try:
+            import Counter
+        except:
+            pass
+
+        class Counters(kolla.Component):
+            pass
+        </script>
+        """,
+        namespace=namespace,
+    )
+    gui = Kolla(DictRenderer())
+    container = {"type": "root"}
+    # state = reactive(
+    #     {
+    #         "counters": [
+    #             {
+    #                 "name": "parent",
+    #                 "subs": [
+    #                     {"name": "child"},
+    #                 ],
+    #             },
+    #         ]
+    #     }
+    # )
+    state = reactive({"counters": [{"count": 0}]})
+
+    gui.render(Counters, container, state=state)
+
+    assert "children" in container["children"][0], format_dict(container)
+    assert len(container["children"][0]["children"]) == 1, format_dict(container)

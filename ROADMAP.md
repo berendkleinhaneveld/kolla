@@ -30,10 +30,10 @@
 	- [ ] Dynamic content (v-if/v-for)
 	- [ ] Dynamic slot name (v-slot:[slotName])
 	- [ ] Scoped slots (slot props)
-- [ ] Component life cycle
-	- [ ] mounted
-	- [ ] updated
-	- [ ] before_unmount
+- [X] Component life cycle
+	- [X] mounted
+	- [X] updated
+	- [X] before_unmount
 - [X] Component events / emit
 - [X] Provide / inject (setContext, getContext)
 - [ ] Compile to file

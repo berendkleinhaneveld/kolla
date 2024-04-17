@@ -57,6 +57,8 @@ class Fragment:
         # Conditional expression for whether the DOM element should be rendered
         self._condition: Callable | None = None
 
+        self._mounted = False
+
         # TODO: maybe this next line is a bit nasty, but
         # on the other hand, it makes sure that the
         # relationship between this item and its parent
@@ -77,6 +79,20 @@ class Fragment:
     @property
     def parent(self) -> Fragment | None:
         return self._parent() if self._parent else None
+
+    def _component_parent(self) -> Component | None:
+        """
+        Returns the component of the first parent ComponentFragment that
+        has a component property. Or None, if not there.
+        """
+        parent = self.parent
+        while parent and (
+            not isinstance(parent, ComponentFragment) or not parent.component
+        ):
+            parent = parent.parent
+
+        if parent:
+            return parent.component
 
     @parent.setter
     def parent(self, parent: Fragment | None):
@@ -238,6 +254,9 @@ class Fragment:
         # of the current child fragments???
 
     def mount(self, target: DomElement, anchor: DomElement | None = None):
+        if self._mounted:
+            return
+
         self.target = target
         self.create()
 
@@ -246,13 +265,21 @@ class Fragment:
         for child in self.children:
             child.mount(self.element or target)
 
+        self._mounted = True
+
     def _set_attr(self, attr, value):
         if self.element:
             self.renderer.set_attribute(self.element, attr, value)
+            if self._mounted:
+                if component := self._component_parent():
+                    component.updated()
 
     def _rem_attr(self, attr):
         if self.element:
             self.renderer.remove_attribute(self.element, attr, None)
+            if self._mounted:
+                if component := self._component_parent():
+                    component.updated()
 
     def _remove(self):
         if self.element:
@@ -263,6 +290,8 @@ class Fragment:
         return bool(self.element)
 
     def unmount(self, destroy=True):
+        self._mounted = False
+
         for child in self.children:
             child.unmount(destroy=destroy)
 
@@ -294,6 +323,8 @@ class ControlFlowFragment(Fragment):
         super().__init__(*args, **kwargs)
 
     def mount(self, target: DomElement, anchor: DomElement | None = None):
+        if self._mounted:
+            return
         self.target = target
 
         @weak(self)
@@ -357,6 +388,9 @@ class ListFragment(Fragment):
         self.expression = expression
 
     def mount(self, target: Any, anchor: Any | None = None):
+        if self._mounted:
+            return
+
         self.target = target
 
         # First create a computed value that captures the expression
@@ -409,6 +443,7 @@ class ListFragment(Fragment):
             if not child.element:
                 child.mount(target, anchor=self.anchor())
 
+        self._mounted = True
         # TODO: detect whether a keyed list is used?
         # TODO: for keyed lists: watch a list of keys instead of indices
 
@@ -454,21 +489,10 @@ class ComponentFragment(Fragment):
         for event, handler in self._events.items():
             self.component.add_event_handler(event, handler)
 
-    def _component_parent(self) -> Component | None:
-        """
-        Returns the component of the first parent ComponentFragment that
-        has a component property. Or None, if not there.
-        """
-        parent = self.parent
-        while parent and (
-            not isinstance(parent, ComponentFragment) or not parent.component
-        ):
-            parent = parent.parent
-
-        if parent:
-            return parent.component
-
     def mount(self, target: DomElement, anchor: DomElement | None = None):
+        if self._mounted:
+            return
+
         self.target = target
         self.create()
 
@@ -476,7 +500,21 @@ class ComponentFragment(Fragment):
             self.fragment.mount(target, anchor)
         else:
             for child in self.children:
-                child.mount(self.element or target, anchor)
+                child.mount(target, anchor)
+
+        if self.component:
+            lookup = [*self.children]
+            while lookup:
+                child = lookup.pop(0)
+                if element := child.element:
+                    self.component._element = element
+                    break
+                for child in child.children:
+                    lookup.extend(child.children)
+
+            self.component.mounted()
+
+        self._mounted = True
 
     def register_slot(self, name, fragment: SlotFragment):
         self.slots[name] = fragment
@@ -492,6 +530,11 @@ class ComponentFragment(Fragment):
 
     def _has_content(self):
         return bool(self.props)
+
+    def unmount(self, destroy=True):
+        if self.component:
+            self.component.before_unmount()
+        super().unmount(destroy=destroy)
 
 
 class SlotFragment(Fragment):
@@ -530,6 +573,9 @@ class SlotFragment(Fragment):
             super().set_attribute(attr, value)
 
     def mount(self, target: DomElement, anchor: DomElement | None = None):
+        # if self._mounted:
+        #     return
+
         component_parent = self.parent_component.parent
         if component_parent.slot_contents:
             for item in component_parent.slot_contents:

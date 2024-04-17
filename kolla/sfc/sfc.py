@@ -56,7 +56,7 @@ def load(path):
     return load_from_string(template, path)
 
 
-def load_from_string(template, path=None):
+def load_from_string(template, path=None, namespace=None):
     """
     Load template from a string.
     Returns tuple of class definition and module namespace.
@@ -72,6 +72,8 @@ def load_from_string(template, path=None):
     # Execute the code as module and pass a dictionary that will capture
     # the global and local scope of the module
     module_namespace = {}
+    if namespace is not None:
+        module_namespace = namespace
     exec(code, module_namespace)
 
     # Check that the class definition is an actual subclass of Component

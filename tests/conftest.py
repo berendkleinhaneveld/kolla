@@ -8,9 +8,9 @@ from observ.proxy_db import proxy_db
 from kolla import sfc
 
 
-def load(source):
+def load(source, namespace=None):
     source = textwrap.dedent(source)
-    return sfc.sfc.load_from_string(source)
+    return sfc.sfc.load_from_string(source, namespace=namespace)
 
 
 @pytest.fixture

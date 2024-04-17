@@ -48,8 +48,8 @@ class Component:
 
     @element.setter
     def element(self, value):
-        """Setter that is used by the internals of Kolla. Please don't use this."""
-        self._element = value
+        """Prevent overwriting the element attributes."""
+        raise RuntimeError("Not allowed to override element attribute")
 
     @property
     def parent(self):
