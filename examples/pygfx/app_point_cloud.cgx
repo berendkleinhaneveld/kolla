@@ -19,7 +19,7 @@ from examples.pygfx.render_widget import RenderWidget
 class Example(kolla.Component):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.state["count"] = 25
+        self.state["count"] = self.props["count"]
 
     def add(self):
         self.state["count"] += 1

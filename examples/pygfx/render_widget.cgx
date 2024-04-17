@@ -15,7 +15,6 @@ from examples.pygfx.basic_scene import BasicScene
 
 class RenderWidget(kolla.Component):
     def mounted(self):
-        breakpoint()
         renderer = gfx.renderers.WgpuRenderer(self.element)
 
         camera = gfx.PerspectiveCamera(60, 16 / 9)
@@ -32,8 +31,14 @@ class RenderWidget(kolla.Component):
         def animate():
             renderer.render(container, camera)
 
+        self.gui.renderer.add_on_change_handler(
+            lambda: self.element.request_draw(animate)
+        )
+
         self.gui.render(
-            BasicScene, container, callback=lambda: self.element.request_draw(animate)
+            BasicScene,
+            container,
+            state=self.props,
         )
 
 

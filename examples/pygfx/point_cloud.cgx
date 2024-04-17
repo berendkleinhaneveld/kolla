@@ -11,33 +11,12 @@
 
 <script>
 import random
-from functools import cache
 
 import pygfx as gfx
 import kolla
 from observ import watch
 
 from examples.pygfx.point import Point
-
-
-last_state = (-1, None)
-@cache
-def rand_for_index(index):
-    assert index >= 0
-    if last_state[0] >= 0 and last_state[0] < index:
-        random.setstate(state)
-        index -= last_state
-    else:
-        random.seed(0)
-
-    while index >= 0:
-        value = [
-            random.randint(-10, 10),
-            random.randint(-10, 10),
-            random.randint(-10, 10),
-        ]
-    last_state = (index, random.getstate())
-    return value
 
 
 class PointCloud(kolla.Component):
@@ -55,10 +34,17 @@ class PointCloud(kolla.Component):
         )
 
     def update_positions(self):
-        for i in range(len(self.state["positions"]), self.props["count"]):
-            self.state["positions"].append(rand_for_index(i))
-        if len(self.state["positions"]) > self.props["count"]:
-            del self.state["positions"][self.props["count"]: len(self.state["positions"])]
+        print(f"Number of spheres: {self.props['count']}")
+        random.seed(0)
+
+        def rand_point():
+            return (
+                random.randint(-10, 10),
+                random.randint(-10, 10),
+                random.randint(-10, 10),
+            )
+
+        self.state["positions"] = [rand_point() for _ in range(self.props["count"])]
 
     def set_hovered(self, index):
         self.state["hovered"] = index

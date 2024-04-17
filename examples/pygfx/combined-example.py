@@ -17,7 +17,7 @@ if __name__ == "__main__":
     # gui = kolla.Kolla(renderer=renderer, event_loop_type=kolla.EventLoopType.SYNC)
     gui = kolla.Kolla(renderer=renderer)
 
-    state = reactive({"count": 50})
+    state = reactive({"count": 1000})
 
     # Define Qt structure and map state to the structure
     # Pass in the app as a container. Can actually be any truthy object

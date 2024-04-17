@@ -509,8 +509,7 @@ class ComponentFragment(Fragment):
                 if element := child.element:
                     self.component._element = element
                     break
-                for child in child.children:
-                    lookup.extend(child.children)
+                lookup.extend(child.children)
 
             self.component.mounted()
 

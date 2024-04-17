@@ -2,8 +2,8 @@
   :geometry="sphere_geom"
   :material="materials[material]"
   :local.position="position"
-  @click="set_selected()"
-  @pointer_move="set_hovered()"
+  @click="set_selected"
+  @pointer_move="set_hovered"
 />
 
 <script>
@@ -20,9 +20,9 @@ materials = {
 
 
 class Point(kolla.Component):
-    def set_selected(self):
+    def set_selected(self, event):
         self.emit("selected", self.props["index"])
 
-    def set_hovered(self):
+    def set_hovered(self, event):
         self.emit("hovered", self.props["index"])
 </script>
