@@ -1,0 +1,25 @@
+<!--
+  Run this example as follows:
+  poetry run kolla --renderer pygfx examples/pygfx/pygfx-component.cgx
+-->
+<group>
+	<ambient-light />
+	<directional-light />
+	<mesh
+	  :material="red"
+	  :geometry="sphere"
+	/>
+</group>
+
+<script>
+import pygfx as gfx
+import kolla
+
+
+sphere = gfx.sphere_geometry(radius=3)
+red = gfx.MeshPhongMaterial(color=(1, 0.2, 0.2))
+
+
+class Ball(kolla.Component):
+	pass
+</script>
