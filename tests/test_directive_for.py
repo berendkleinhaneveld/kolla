@@ -78,7 +78,7 @@ def test_for_between_other_tags(parse_source):
         """
         <foo />
         <node
-          v-for="i in range(10)"
+          v-for="i in values"
           :value="i"
         />
         <bar />
@@ -93,17 +93,52 @@ def test_for_between_other_tags(parse_source):
     )
 
     container = {"type": "root"}
+    state = reactive({"values": list(range(10))})
     gui = Kolla(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )
-    gui.render(App, container)
+    gui.render(App, container, state=state)
 
-    assert len(container["children"]) == 12
+    assert len(container["children"]) == len(state["values"]) + 2
     assert container["children"][0]["type"] == "foo"
     assert container["children"][-1]["type"] == "bar"
+    for child in container["children"][1:-1]:
+        assert child["type"] == "node"
 
-    # TODO: add tests for response to changes in size of v-for
+    state["values"].append(len(state["values"]))
+
+    # Test response to changes in size of v-for
+    assert len(container["children"]) == len(state["values"]) + 2
+    assert container["children"][0]["type"] == "foo"
+    assert container["children"][-1]["type"] == "bar"
+    for child in container["children"][1:-1]:
+        assert child["type"] == "node"
+
+    state["values"].pop(3)
+    state["values"].pop(3)
+
+    assert len(container["children"]) == len(state["values"]) + 2
+    assert container["children"][0]["type"] == "foo"
+    assert container["children"][-1]["type"] == "bar"
+    for child in container["children"][1:-1]:
+        assert child["type"] == "node"
+
+    state["values"].clear()
+
+    assert len(container["children"]) == len(state["values"]) + 2
+    assert container["children"][0]["type"] == "foo"
+    assert container["children"][-1]["type"] == "bar"
+    for child in container["children"][1:-1]:
+        assert child["type"] == "node"
+
+    state["values"] = [1, 2, 3]
+
+    assert len(container["children"]) == len(state["values"]) + 2
+    assert container["children"][0]["type"] == "foo"
+    assert container["children"][-1]["type"] == "bar"
+    for child in container["children"][1:-1]:
+        assert child["type"] == "node"
 
 
 def test_for_between_if_tags(parse_source):
@@ -511,18 +546,6 @@ def test_for_regression(parse_source):
     )
     gui = Kolla(DictRenderer())
     container = {"type": "root"}
-    # state = reactive(
-    #     {
-    #         "counters": [
-    #             {
-    #                 "name": "parent",
-    #                 "subs": [
-    #                     {"name": "child"},
-    #                 ],
-    #             },
-    #         ]
-    #     }
-    # )
     state = reactive({"counters": [{"count": 0}]})
 
     gui.render(Counters, container, state=state)
