@@ -22,7 +22,6 @@ def test_component_basic_lifecycle(parse_source):
 
             def bump(self):
                 self.state["count"] += self.props.get("step_size", 1)
-                ...
         </script>
         """
     )
