@@ -8,6 +8,7 @@ def test_reactive_element_with_events(parse_source):
         <count
           :count="count"
           @bump="bump"
+          @skip="skip(3)"
         />
 
         <script>
@@ -20,6 +21,9 @@ def test_reactive_element_with_events(parse_source):
 
             def bump(self):
                 self.state["count"] += 1
+
+            def skip(self, amount):
+                self.state["count"] += amount
         </script>
         """
     )
@@ -38,7 +42,12 @@ def test_reactive_element_with_events(parse_source):
     assert len(count["handlers"]["bump"]) == 1
 
     # Update state by triggering all listeners, which should trigger a re-render
-    for listener in count["handlers"]["bump"]:
-        listener()
+    for handler in count["handlers"]["bump"]:
+        handler()
 
     assert count["attrs"]["count"] == 1
+
+    for handler in count["handlers"]["skip"]:
+        handler()
+
+    assert count["attrs"]["count"] == 4

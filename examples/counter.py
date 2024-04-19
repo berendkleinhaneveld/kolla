@@ -1,7 +1,7 @@
 from PySide6 import QtWidgets
 
 import kolla
-from kolla.sfc import sfc
+from kolla.sfc import compiler
 
 # The source normally resides in a .cgx file
 # which can be imported like any other python file
@@ -25,7 +25,7 @@ class Counter(kolla.Component):
         self.state["count"] += 1
 </script>
 """
-Counter, module = sfc.load_from_string(source)
+Counter, module = compiler.load_from_string(source)
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication()

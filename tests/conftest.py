@@ -10,7 +10,7 @@ from kolla import sfc
 
 def load(source, namespace=None):
     source = textwrap.dedent(source)
-    return sfc.sfc.load_from_string(source, namespace=namespace)
+    return sfc.compiler.load_from_string(source, namespace=namespace)
 
 
 @pytest.fixture

@@ -6,8 +6,8 @@ Reactive user interfaces.
 
 Unholy marriage of concepts from [Svelte](https://svelte.dev), [Solid][https://solidjs.com], [Vue](https://vuejs.org) and [Collagraph](https://github.com/fork-tongue/collagraph).
 
-* 'No virtual DOM approach' with fine-grained reactivity (like Svelte and Solid) 
-* Syntax for SFC (`.cgx`) from Vue
+* 'No virtual DOM approach' with fine-grained reactivity (like Svelte and Solid)
+* Syntax for single-file components (`.cgx`) from Vue
 * Renderers from Collagraph (PySide6, Pygfx, PyScript)
 
 
@@ -18,14 +18,14 @@ Write your Python interfaces in a declarative manner with plain render functions
 * Reactivity (made possible by leveraging [observ](https://github.com/fork-tongue/observ))
 * Single-file components with Vue-like syntax (`.cgx` files)
 * Class components with local state and life-cycle methods/hooks
-* Custom renderers
+* Build your own custom renderer
 
 Here is an example that shows a simple counter:
 
 ```python
 from PySide6 import QtWidgets
 import kolla
-from kolla.sfc import sfc
+from kolla.sfc import compiler
 
 # The source normally resides in a .cgx file
 # which can be imported like any other python file
@@ -49,13 +49,13 @@ class Counter(kolla.Component):
         self.state["count"] += 1
 </script>
 """
-Counter, module = sfc.load_from_string(source)
+Counter, module = compiler.load_from_string(source)
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication()
-    # Create a Kolla instance with a PySide renderer 
+    # Create a Kolla instance with a PySide renderer
     gui = kolla.Kolla(renderer=kolla.PySideRenderer())
-    # Render the function component into a container 
+    # Render the function component into a container
     # (in this case the app but can be another widget)
     gui.render(Counter, app)
     app.exec()

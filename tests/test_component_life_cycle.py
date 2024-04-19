@@ -92,7 +92,10 @@ def test_component_basic_lifecycle(parse_source):
         namespace=namespace,
     )
 
-    gui = kolla.Kolla(kolla.DictRenderer(), event_loop_type=kolla.EventLoopType.SYNC)
+    gui = kolla.Kolla(
+        kolla.DictRenderer(),
+        event_loop_type=kolla.EventLoopType.SYNC,
+    )
     container = {"type": "root"}
     state = reactive(
         {
@@ -160,4 +163,3 @@ def test_component_basic_lifecycle(parse_source):
 
 # TODO: add tests with more complex component 'geometry' (more layers)
 # to really put the update system to the test
-# TODO: would be nice if we could cache the _component_parent in a clever way

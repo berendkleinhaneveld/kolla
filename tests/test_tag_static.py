@@ -87,3 +87,27 @@ def test_tree_with_multiple_roots(parse_source):
     assert len(container["children"]) == 2
     assert container["children"][0]["type"] == "item"
     assert container["children"][1]["type"] == "other"
+
+
+def test_items_with_dashes(parse_source):
+    App, _ = parse_source(
+        """
+        <dashed-item :name="props.get('name')" />
+
+        <script>
+        import kolla
+        class App(kolla.Component):
+            pass
+        </script>
+        """
+    )
+
+    container = {"type": "root"}
+    gui = Kolla(
+        renderer=DictRenderer(),
+        event_loop_type=EventLoopType.SYNC,
+    )
+    gui.render(App, container)
+
+    assert len(container["children"]) == 1
+    assert container["children"][0]["type"] == "dashed-item"

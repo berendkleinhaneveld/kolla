@@ -14,7 +14,6 @@ if __name__ == "__main__":
 
     renderer = kolla.PySideRenderer()
     renderer.register("wgpucanvas", WgpuCanvas)
-    # gui = kolla.Kolla(renderer=renderer, event_loop_type=kolla.EventLoopType.SYNC)
     gui = kolla.Kolla(renderer=renderer)
 
     state = reactive({"count": 1000})

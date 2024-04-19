@@ -84,7 +84,9 @@ class Fragment:
         """
         Returns the component of the first parent ComponentFragment that
         has a component property. Or None, if not there.
+
         """
+        # TODO: would be nice if we could cache the _component_parent in a clever way
         parent = self.parent
         while parent and (
             not isinstance(parent, ComponentFragment) or not parent.component
@@ -503,13 +505,20 @@ class ComponentFragment(Fragment):
                 child.mount(target, anchor)
 
         if self.component:
-            lookup = [*self.children]
-            while lookup:
-                child = lookup.pop(0)
-                if element := child.element:
-                    self.component._element = element
-                    break
-                lookup.extend(child.children)
+            from collections import deque
+
+            # Use fifo data structure (double-ended queue)
+            lookup = deque(self.children)
+            try:
+                while True:
+                    child = lookup.popleft()
+                    if element := child.element:
+                        self.component._element = element
+                        lookup.clear()
+                        break
+                    lookup.extend(child.children)
+            except IndexError:
+                pass
 
             self.component.mounted()
 

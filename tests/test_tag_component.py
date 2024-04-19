@@ -46,7 +46,24 @@ def test_component_tag(parse_source):
 
 
 def test_component_tag_props_and_events(parse_source):
-    App, _ = parse_source(
+    SubComponent, namespace = parse_source(
+        """
+        <sub
+          :subval="val"
+          :subvalue="value"
+          :subother="other"
+          @subaction="emit('action')"
+        />
+
+        <script>
+        import kolla
+        class SubComponent(kolla.Component):
+            pass
+        </script>
+        """
+    )
+
+    App, namespace = parse_source(
         """
         <el
           :count="action_count"
@@ -62,30 +79,10 @@ def test_component_tag_props_and_events(parse_source):
         <script>
         import kolla
 
-
-        class SubComponent(kolla.Component):
-            def render(self, renderer):
-                from kolla.fragment import (
-                    ControlFlowFragment,
-                    ComponentFragment,
-                    ListFragment,
-                    Fragment,
-                )
-
-                # <sub
-                #   :subval="val"
-                #   :subvalue="value"
-                #   :subother="other"
-                #   @subaction="self.emit('action')"
-                # />
-                component = ComponentFragment(renderer)
-                sub0 = Fragment(renderer, tag="sub", parent=component)
-                sub0.set_bind("subval", lambda: self._lookup("val", globals()))
-                sub0.set_bind("subvalue", lambda: self._lookup("value", globals()))
-                sub0.set_bind("subother", lambda: self._lookup("other", globals()))
-                sub0.set_event("subaction", lambda: self.emit("action"))
-                return component
-
+        try:
+            import SubComponent
+        except:
+            pass
 
         class App(kolla.Component):
             def __init__(self, *args, **kwargs):
@@ -95,7 +92,8 @@ def test_component_tag_props_and_events(parse_source):
             def bump(self):
                 self.state["action_count"] += 1
         </script>
-        """
+        """,
+        namespace=namespace,
     )
 
     state = reactive({"bar": "foo", "baz": "baz"})

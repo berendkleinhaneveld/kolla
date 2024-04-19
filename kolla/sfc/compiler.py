@@ -138,6 +138,7 @@ def construct_ast(path, template=None):
 
     if DEBUG:
         try:
+            print(f"---{component_def.name}---")  # noqa: T201
             _print_ast_tree_as_code(render_tree)
         except Exception as e:
             logger.warning("Could not unparse AST", exc_info=e)
@@ -277,7 +278,7 @@ def ast_set_bind(
     list_names: list[dict[str, set[str]]],
 ) -> ast.Expr:
     _, key = key.split(":")
-    source = ast.parse(f'{el}.set_bind("{key}", lambda: ({value}))', mode="eval")
+    source = ast.parse(f'{el}.set_bind("{key}", lambda: {value})', mode="eval")
     return ast_named_lambda(
         source, {"renderer", "new", el, "watch"} | names, list_names
     )
@@ -302,7 +303,18 @@ def ast_set_event(
     split_char = "@" if key.startswith("@") else ":"
     _, key = key.split(split_char)
 
-    source = ast.parse(f"lambda *args, **kwargs: {value}(*args, **kwargs)", mode="eval")
+    # The event can be a method name, or a function
+    # When it is not a function, then the args/kwargs will be passed
+    # to the provided method. Otherwise, the specified function is
+    # just wrapped in a lambda
+    basic_source = ast.parse(value, mode="eval")
+    if isinstance(basic_source.body, ast.Name):
+        source = ast.parse(
+            f"lambda *args, **kwargs: {value}(*args, **kwargs)", mode="eval"
+        )
+    else:
+        source = ast.parse(f"lambda: {value}", mode="eval")
+
     # v-on directives allow for lambdas which define arguments
     # which need to be skipped by the RewriteName visitor
     lambda_source = ast_named_lambda(source, {"args", "kwargs"} | names, list_names)
@@ -375,6 +387,10 @@ def ast_create_list_fragment(name: str, parent: str | None) -> ast.Assign:
     )
 
 
+def safe_tag(tag):
+    return tag.replace("-", "_")
+
+
 def create_kolla_render_function(node: Node, names: set[str]) -> ast.FunctionDef:
     body: list[ast.stmt] = []
     body.append(
@@ -425,7 +441,8 @@ def create_kolla_render_function(node: Node, names: set[str]) -> ast.FunctionDef
         names: set,
         list_names: list[dict[str, set[str]]],
     ):
-        fragment_name = f"{node.tag}{counter[node.tag]}"
+        tag = safe_tag(node.tag)
+        fragment_name = f"{tag}{counter[tag]}"
         function_name = f"create_{fragment_name}"
         return_stmt = ast.Return(value=ast.Name(id=fragment_name, ctx=ast.Load()))
 
@@ -513,8 +530,9 @@ def create_kolla_render_function(node: Node, names: set[str]) -> ast.FunctionDef
         control_flow_parent = None
         for child in nodes:
             # Create element name
-            el = f"{child.tag}{counter[child.tag]}"
-            counter[child.tag] += 1
+            tag = safe_tag(child.tag)
+            el = f"{tag}{counter[tag]}"
+            counter[tag] += 1
             parent = target
             if any(
                 True
@@ -861,7 +879,7 @@ def _print_ast_tree_as_code(tree):  # pragma: no cover
         console = Console()
         syntax = Syntax(result, "python")
         console.print(syntax)
-    except black.parsing.InvalidInput:
+    except (black.parsing.InvalidInput, black.parsing.ASTSafetyError):
         print(plain_result)  # noqa: T201
     except TypeError:
         pass
