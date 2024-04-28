@@ -1,9 +1,9 @@
 import pytest
 from observ import reactive
 
-from kolla import EventLoopType, Kolla
-from kolla.renderers import DictRenderer
-from kolla.renderers.dict_renderer import format_dict
+from collagraph import EventLoopType, Collagraph
+from collagraph.renderers import DictRenderer
+from collagraph.renderers.dict_renderer import format_dict
 
 
 def test_cgx_slots_dynamic_if_template():
@@ -11,7 +11,7 @@ def test_cgx_slots_dynamic_if_template():
 
     state = reactive({"show_content": False})
 
-    gui = Kolla(DictRenderer(), event_loop_type=EventLoopType.SYNC)
+    gui = Collagraph(DictRenderer(), event_loop_type=EventLoopType.SYNC)
     container = {"type": "container"}
     gui.render(Tree, container, state)
 
@@ -34,7 +34,7 @@ def test_cgx_slots_dynamic_for_template():
 
     state = reactive({"content": ["a", "b"]})
 
-    gui = Kolla(DictRenderer(), event_loop_type=EventLoopType.SYNC)
+    gui = Collagraph(DictRenderer(), event_loop_type=EventLoopType.SYNC)
     container = {"type": "container"}
     gui.render(Tree, container, state)
 
@@ -62,7 +62,7 @@ def test_cgx_slots_dynamic_if():
 
     state = reactive({"show_content": False})
 
-    gui = Kolla(DictRenderer(), event_loop_type=EventLoopType.SYNC)
+    gui = Collagraph(DictRenderer(), event_loop_type=EventLoopType.SYNC)
     container = {"type": "container"}
     gui.render(Tree, container, state)
 
@@ -86,7 +86,7 @@ def test_cgx_slots_dynamic_for():
 
     state = reactive({"content": ["a", "b"]})
 
-    gui = Kolla(DictRenderer(), event_loop_type=EventLoopType.SYNC)
+    gui = Collagraph(DictRenderer(), event_loop_type=EventLoopType.SYNC)
     container = {"type": "container"}
     gui.render(Tree, container, state)
 

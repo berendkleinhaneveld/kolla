@@ -1,5 +1,5 @@
-from kolla import EventLoopType, Kolla
-from kolla.renderers import DictRenderer
+from collagraph import EventLoopType, Collagraph
+from collagraph.renderers import DictRenderer
 
 
 def test_simple_tree(parse_source):
@@ -8,16 +8,16 @@ def test_simple_tree(parse_source):
         <app/>
 
         <script>
-        import kolla
+        import collagraph
 
-        class App(kolla.Component):
+        class App(collagraph.Component):
             pass
         </script>
         """
     )
 
     container = {"type": "root"}
-    gui = Kolla(
+    gui = Collagraph(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )
@@ -38,16 +38,16 @@ def test_hierarchical_tree(parse_source):
         </parent>
 
         <script>
-        import kolla
+        import collagraph
 
-        class App(kolla.Component):
+        class App(collagraph.Component):
             pass
         </script>
         """
     )
 
     container = {"type": "root"}
-    gui = Kolla(
+    gui = Collagraph(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )
@@ -69,16 +69,16 @@ def test_tree_with_multiple_roots(parse_source):
         <other />
 
         <script>
-        import kolla
+        import collagraph
 
-        class App(kolla.Component):
+        class App(collagraph.Component):
             pass
         </script>
         """
     )
 
     container = {"type": "root"}
-    gui = Kolla(
+    gui = Collagraph(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )
@@ -95,15 +95,15 @@ def test_items_with_dashes(parse_source):
         <dashed-item :name="props.get('name')" />
 
         <script>
-        import kolla
-        class App(kolla.Component):
+        import collagraph
+        class App(collagraph.Component):
             pass
         </script>
         """
     )
 
     container = {"type": "root"}
-    gui = Kolla(
+    gui = Collagraph(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )

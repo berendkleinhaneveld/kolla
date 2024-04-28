@@ -5,9 +5,9 @@
 />
 
 <script>
-import kolla
+import collagraph
 
-class Child(kolla.Component):
+class Child(collagraph.Component):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.state["injected_value"] = self.inject("value")

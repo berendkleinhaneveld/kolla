@@ -1,7 +1,7 @@
 import pygfx as gfx  # noqa: I001
 from wgpu.gui.auto import WgpuCanvas, run
 
-import kolla
+import collagraph
 
 from examples.number_pad import NumberPad
 
@@ -27,9 +27,9 @@ if __name__ == "__main__":
     def animate():
         renderer.render(container, camera)
 
-    kolla_renderer = kolla.PygfxRenderer()
-    kolla_renderer.add_on_change_handler(lambda: canvas.request_draw(animate))
+    cg_renderer = collagraph.PygfxRenderer()
+    cg_renderer.add_on_change_handler(lambda: canvas.request_draw(animate))
 
-    gui = kolla.Kolla(renderer=kolla_renderer)
+    gui = collagraph.Collagraph(renderer=cg_renderer)
     gui.render(NumberPad, target=container)
     run()

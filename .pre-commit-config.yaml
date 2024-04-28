@@ -27,6 +27,6 @@ repos:
     entry: poetry run pytest tests
     language: system
     types: [text]
-    files: \.(py|kolla)$
+    files: \.(py|cgx)$
     require_serial: true
     pass_filenames: false

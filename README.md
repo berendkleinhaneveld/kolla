@@ -1,4 +1,4 @@
-# Kolla 📓
+# Collagraph 📓
 
 Reactive user interfaces.
 
@@ -24,12 +24,12 @@ Here is an example that shows a simple counter:
 
 ```python
 from PySide6 import QtWidgets
-import kolla
-from kolla.sfc import compiler
+import collagraph
+from collagraph.sfc import compiler
 
 # The source normally resides in a .cgx file
 # which can be imported like any other python file
-# after the `import kolla` line. For this example
+# after the `import collagraph` line. For this example
 # we'll just parse directly from a string.
 source = """
 <widget>
@@ -38,9 +38,9 @@ source = """
 </widget>
 
 <script>
-import kolla
+import collagraph
 
-class Counter(kolla.Component):
+class Counter(collagraph.Component):
     def __init__(self, props):
         super().__init__(props)
         self.state["count"] = 0
@@ -53,8 +53,8 @@ Counter, module = compiler.load_from_string(source)
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication()
-    # Create a Kolla instance with a PySide renderer
-    gui = kolla.Kolla(renderer=kolla.PySideRenderer())
+    # Create a Collagraph instance with a PySide renderer
+    gui = collagraph.Collagraph(renderer=collagraph.PySideRenderer())
     # Render the function component into a container
     # (in this case the app but can be another widget)
     gui.render(Counter, app)
@@ -83,7 +83,7 @@ The root template tag is not required for components and can have multiple eleme
 <button />
 
 <script>
-import kolla
+import collagraph
 
 class Example(Component):
     pass

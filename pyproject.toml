@@ -1,10 +1,10 @@
 [tool.poetry]
-name = "kolla"
+name = "collagraph"
 version = "0.5.2"
 description = "Reactive user interfaces"
 authors = ["Berend Klein Haneveld <berendkleinhaneveld@gmail.com>", "Korijn van Golen <korijn@gmail.com>"]
 license = "MIT"
-homepage = "https://github.com/fork-tongue/kolla"
+homepage = "https://github.com/fork-tongue/collagraph"
 readme = "README.md"
 
 [tool.poetry.extras]
@@ -17,8 +17,8 @@ observ = ">=0.14.1"
 pygfx = { version = ">=0.1.17", optional = true }
 pyside6 = { version = "^6.6", python = "<3.13", optional = true }
 
-# TODO: add entry_point to be able to run kolla as module and render .cgx files directly
-# python -m kolla path/to/example.cgx
+# TODO: add entry_point to be able to run collagraph as module and render .cgx files directly
+# python -m collagraph path/to/example.cgx
 
 [tool.poetry.group.dev.dependencies]
 black = "*"  # Only for debugging generated code, ruff is used for formatting
@@ -35,7 +35,7 @@ ruff = "*"
 [tool.coverage.run]
 omit = [
 	"tests/*",
-	"kolla/renderers/*"
+	"collagraph/renderers/*"
 ]
 
 [tool.ruff.lint]

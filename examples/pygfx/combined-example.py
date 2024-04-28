@@ -6,15 +6,15 @@ from observ import reactive
 from PySide6 import QtWidgets
 from wgpu.gui.qt import WgpuCanvas
 
-import kolla
+import collagraph
 from examples.pygfx.app_point_cloud import Example
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication()
 
-    renderer = kolla.PySideRenderer()
+    renderer = collagraph.PySideRenderer()
     renderer.register("wgpucanvas", WgpuCanvas)
-    gui = kolla.Kolla(renderer=renderer)
+    gui = collagraph.Collagraph(renderer=renderer)
 
     state = reactive({"count": 1000})
 

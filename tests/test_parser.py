@@ -1,7 +1,7 @@
 import pytest
 
-from kolla import EventLoopType, Kolla
-from kolla.renderers import DictRenderer
+from collagraph import EventLoopType, Collagraph
+from collagraph.renderers import DictRenderer
 
 
 def test_parser_unclosed_element(parse_source):
@@ -12,15 +12,15 @@ def test_parser_unclosed_element(parse_source):
         </app>
 
         <script>
-        import kolla
+        import collagraph
 
-        class App(kolla.Component):
+        class App(collagraph.Component):
             pass
         </script>
         """
     )
 
-    gui = Kolla(
+    gui = Collagraph(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )
@@ -42,9 +42,9 @@ def test_parser_unclosed_root_element(parse_source):
             <app>
 
             <script>
-            import kolla
+            import collagraph
 
-            class App(kolla.Component):
+            class App(collagraph.Component):
                 pass
             </script>
             """

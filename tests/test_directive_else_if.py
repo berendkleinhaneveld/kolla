@@ -1,7 +1,7 @@
 from observ import reactive
 
-from kolla import EventLoopType, Kolla
-from kolla.renderers import DictRenderer
+from collagraph import EventLoopType, Collagraph
+from collagraph.renderers import DictRenderer
 
 
 def test_directive_else_if_root(parse_source):
@@ -11,9 +11,9 @@ def test_directive_else_if_root(parse_source):
         <bar v-else-if="bar" />
 
         <script>
-        import kolla
+        import collagraph
 
-        class App(kolla.Component):
+        class App(collagraph.Component):
             pass
         </script>
         """
@@ -21,7 +21,7 @@ def test_directive_else_if_root(parse_source):
 
     state = reactive({"foo": False, "bar": False})
     container = {"type": "root"}
-    gui = Kolla(
+    gui = Collagraph(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )
@@ -63,9 +63,9 @@ def test_directive_else_if_surrounded(parse_source):
         <after />
 
         <script>
-        import kolla
+        import collagraph
 
-        class App(kolla.Component):
+        class App(collagraph.Component):
             pass
         </script>
         """
@@ -73,7 +73,7 @@ def test_directive_else_if_surrounded(parse_source):
 
     state = reactive({"foo": False, "bar": False})
     container = {"type": "root"}
-    gui = Kolla(
+    gui = Collagraph(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )
@@ -127,9 +127,9 @@ def test_directive_else_if_combined(parse_source):
         <boa v-else-if="boa" />
 
         <script>
-        import kolla
+        import collagraph
 
-        class App(kolla.Component):
+        class App(collagraph.Component):
             pass
         </script>
         """
@@ -143,7 +143,7 @@ def test_directive_else_if_combined(parse_source):
         }
     )
     container = {"type": "root"}
-    gui = Kolla(
+    gui = Collagraph(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )

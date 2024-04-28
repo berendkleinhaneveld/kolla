@@ -1,7 +1,7 @@
 from observ import reactive
 
-from kolla import EventLoopType, Kolla
-from kolla.renderers import DictRenderer
+from collagraph import EventLoopType, Collagraph
+from collagraph.renderers import DictRenderer
 
 
 def test_dynamic_attribute_object_method(parse_source):
@@ -10,9 +10,9 @@ def test_dynamic_attribute_object_method(parse_source):
         <app v-bind:foo="bar()" />
 
         <script>
-        import kolla
+        import collagraph
 
-        class App(kolla.Component):
+        class App(collagraph.Component):
             def bar(self):
                 return "baz"
         </script>
@@ -20,7 +20,7 @@ def test_dynamic_attribute_object_method(parse_source):
     )
 
     container = {"type": "root"}
-    gui = Kolla(
+    gui = Collagraph(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )
@@ -36,9 +36,9 @@ def test_dynamic_attribute_object_property(parse_source):
         <app :foo="bar" />
 
         <script>
-        import kolla
+        import collagraph
 
-        class App(kolla.Component):
+        class App(collagraph.Component):
             def __init__(self, props):
                 super().__init__(props)
                 self.bar = "baz"
@@ -47,7 +47,7 @@ def test_dynamic_attribute_object_property(parse_source):
     )
 
     container = {"type": "root"}
-    gui = Kolla(
+    gui = Collagraph(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )
@@ -63,18 +63,18 @@ def test_dynamic_attribute_module_scope(parse_source):
         <app :foo="bar" />
 
         <script>
-        import kolla
+        import collagraph
 
         bar = "baz"
 
-        class App(kolla.Component):
+        class App(collagraph.Component):
             pass
         </script>
         """
     )
 
     container = {"type": "root"}
-    gui = Kolla(
+    gui = Collagraph(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )
@@ -90,9 +90,9 @@ def test_dynamic_attribute_state(parse_source):
         <app :foo="bar" />
 
         <script>
-        import kolla
+        import collagraph
 
-        class App(kolla.Component):
+        class App(collagraph.Component):
             def __init__(self, props):
                 super().__init__(props)
                 self.state["bar"] = "baz"
@@ -101,7 +101,7 @@ def test_dynamic_attribute_state(parse_source):
     )
 
     container = {"type": "root"}
-    gui = Kolla(
+    gui = Collagraph(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )
@@ -117,16 +117,16 @@ def test_dynamic_attribute_props(parse_source):
         <app :foo="bar" />
 
         <script>
-        import kolla
+        import collagraph
 
-        class App(kolla.Component):
+        class App(collagraph.Component):
             pass
         </script>
         """
     )
 
     container = {"type": "root"}
-    gui = Kolla(
+    gui = Collagraph(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )
@@ -142,9 +142,9 @@ def test_dynamic_attribute_props_change(parse_source):
         <app :foo="bar" />
 
         <script>
-        import kolla
+        import collagraph
 
-        class App(kolla.Component):
+        class App(collagraph.Component):
             pass
         </script>
         """
@@ -152,7 +152,7 @@ def test_dynamic_attribute_props_change(parse_source):
 
     state = reactive({"bar": "baz"})
     container = {"type": "root"}
-    gui = Kolla(
+    gui = Collagraph(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )
@@ -172,9 +172,9 @@ def test_dynamic_attribute_dict(parse_source):
         <app v-bind="values" />
 
         <script>
-        import kolla
+        import collagraph
 
-        class App(kolla.Component):
+        class App(collagraph.Component):
             pass
         </script>
         """
@@ -182,7 +182,7 @@ def test_dynamic_attribute_dict(parse_source):
 
     state = reactive({"values": {"foo": "foo"}})
     container = {"type": "root"}
-    gui = Kolla(
+    gui = Collagraph(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )

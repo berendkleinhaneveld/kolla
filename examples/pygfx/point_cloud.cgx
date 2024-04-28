@@ -13,13 +13,13 @@
 import random
 
 import pygfx as gfx
-import kolla
+import collagraph
 from observ import watch
 
 from examples.pygfx.point import Point
 
 
-class PointCloud(kolla.Component):
+class PointCloud(collagraph.Component):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.state["positions"] = []

@@ -18,7 +18,7 @@ DomElement = TypeVar("DomElement")
 class Fragment:
     """
     A fragment is something that describes an element as a kind of function.
-    In the kolla template, elements are functions that describe what an element
+    In the cgx template, elements are functions that describe what an element
     should be like based on certain input. Directives such as v-if and v-for serve
     as functions that govern a dynamic list of elements.
     """

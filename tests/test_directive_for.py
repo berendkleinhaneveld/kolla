@@ -1,15 +1,15 @@
 import pytest
 from observ import reactive
 
-from kolla import EventLoopType, Kolla
-from kolla.renderers import DictRenderer
-from kolla.renderers.dict_renderer import format_dict
+from collagraph import Collagraph, EventLoopType
+from collagraph.renderers import DictRenderer
+from collagraph.renderers.dict_renderer import format_dict
 
 
 def test_for_simple(parse_source):
     """
     Render a node with a 1_000 children.
-    This ensures that kolla will not trigger a RecursionError.
+    This ensures that collagraph will not trigger a RecursionError.
     """
     number_of_items = 1_000
     App, _ = parse_source(
@@ -20,16 +20,16 @@ def test_for_simple(parse_source):
         />
 
         <script>
-        import kolla
+        import collagraph
 
-        class App(kolla.Component):
+        class App(collagraph.Component):
             pass
         </script>
         """
     )
 
     container = {"type": "root"}
-    gui = Kolla(
+    gui = Collagraph(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )
@@ -52,16 +52,16 @@ def test_for_with_children(parse_source):
         </node>
 
         <script>
-        import kolla
+        import collagraph
 
-        class App(kolla.Component):
+        class App(collagraph.Component):
             pass
         </script>
         """
     )
 
     container = {"type": "root"}
-    gui = Kolla(
+    gui = Collagraph(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )
@@ -84,9 +84,9 @@ def test_for_between_other_tags(parse_source):
         <bar />
 
         <script>
-        import kolla
+        import collagraph
 
-        class App(kolla.Component):
+        class App(collagraph.Component):
             pass
         </script>
         """
@@ -94,7 +94,7 @@ def test_for_between_other_tags(parse_source):
 
     container = {"type": "root"}
     state = reactive({"values": list(range(10))})
-    gui = Kolla(
+    gui = Collagraph(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )
@@ -152,9 +152,9 @@ def test_for_between_if_tags(parse_source):
         <bar v-if="bar" />
 
         <script>
-        import kolla
+        import collagraph
 
-        class App(kolla.Component):
+        class App(collagraph.Component):
             pass
         </script>
         """
@@ -167,7 +167,7 @@ def test_for_between_if_tags(parse_source):
         }
     )
     container = {"type": "root"}
-    gui = Kolla(
+    gui = Collagraph(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )
@@ -198,9 +198,9 @@ def test_for_simple_reactive(parse_source):
         />
 
         <script>
-        import kolla
+        import collagraph
 
-        class App(kolla.Component):
+        class App(collagraph.Component):
             pass
         </script>
         """
@@ -208,7 +208,7 @@ def test_for_simple_reactive(parse_source):
 
     state = reactive({"items": ["a", "b"]})
     container = {"type": "root"}
-    gui = Kolla(
+    gui = Collagraph(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )
@@ -232,9 +232,9 @@ def test_for_reactive(parse_source):
         />
 
         <script>
-        import kolla
+        import collagraph
 
-        class App(kolla.Component):
+        class App(collagraph.Component):
             pass
         </script>
         """
@@ -242,7 +242,7 @@ def test_for_reactive(parse_source):
 
     state = reactive({"items": ["a", "b"]})
     container = {"type": "root"}
-    gui = Kolla(
+    gui = Collagraph(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )
@@ -278,9 +278,9 @@ def test_for_reactive_pop(parse_source):
         <after />
 
         <script>
-        import kolla
+        import collagraph
 
-        class App(kolla.Component):
+        class App(collagraph.Component):
             pass
         </script>
         """
@@ -288,7 +288,7 @@ def test_for_reactive_pop(parse_source):
 
     state = reactive({"items": ["a", "b", "c"]})
     container = {"type": "root"}
-    gui = Kolla(
+    gui = Collagraph(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )
@@ -314,9 +314,9 @@ def test_for_keyed(parse_source):
         />
 
         <script>
-        import kolla
+        import collagraph
 
-        class App(kolla.Component):
+        class App(collagraph.Component):
             pass
         </script>
         """
@@ -331,7 +331,7 @@ def test_for_keyed(parse_source):
         }
     )
     container = {"type": "root"}
-    gui = Kolla(
+    gui = Collagraph(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )
@@ -365,9 +365,9 @@ def test_example(parse_source):
         </node>
 
         <script>
-        import kolla
+        import collagraph
 
-        class App(kolla.Component):
+        class App(collagraph.Component):
             pass
         </script>
         """
@@ -375,7 +375,7 @@ def test_example(parse_source):
 
     state = reactive({"items": ["a", "b", "c"], "other": "toet"})
     container = {"type": "root"}
-    gui = Kolla(
+    gui = Collagraph(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )
@@ -402,9 +402,9 @@ def test_looped_example(parse_source):
         </node>
 
         <script>
-        import kolla
+        import collagraph
 
-        class App(kolla.Component):
+        class App(collagraph.Component):
             pass
         </script>
         """
@@ -412,7 +412,7 @@ def test_looped_example(parse_source):
 
     state = reactive({"items": ["a", "b", "c"]})
     container = {"type": "root"}
-    gui = Kolla(
+    gui = Collagraph(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )
@@ -456,9 +456,9 @@ def test_consecutive_lists(parse_source):
         />
 
         <script>
-        import kolla
+        import collagraph
 
-        class App(kolla.Component):
+        class App(collagraph.Component):
             pass
         </script>
         """
@@ -466,7 +466,7 @@ def test_consecutive_lists(parse_source):
 
     state = reactive({"a": ["a", "b", "c"], "b": ["x", "y", "z"]})
     container = {"type": "root"}
-    gui = Kolla(
+    gui = Collagraph(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )
@@ -514,8 +514,8 @@ def test_for_regression(parse_source):
           :count="count"
         />
         <script>
-        import kolla
-        class Counter(kolla.Component):
+        import collagraph
+        class Counter(collagraph.Component):
             pass
         </script>
         """
@@ -531,20 +531,20 @@ def test_for_regression(parse_source):
         </counters>
 
         <script>
-        import kolla
+        import collagraph
 
         try:
             import Counter
         except:
             pass
 
-        class Counters(kolla.Component):
+        class Counters(collagraph.Component):
             pass
         </script>
         """,
         namespace=namespace,
     )
-    gui = Kolla(DictRenderer())
+    gui = Collagraph(DictRenderer())
     container = {"type": "root"}
     state = reactive({"counters": [{"count": 0}]})
 

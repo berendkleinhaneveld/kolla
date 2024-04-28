@@ -1,4 +1,4 @@
-from kolla import DictRenderer, EventLoopType, Kolla
+from collagraph import DictRenderer, EventLoopType, Collagraph
 
 
 def test_load_string(parse_source):
@@ -7,9 +7,9 @@ def test_load_string(parse_source):
         <item :value="value" />
 
         <script>
-        import kolla
+        import collagraph
 
-        class Item(kolla.Component):
+        class Item(collagraph.Component):
             pass
         </script>
         """
@@ -22,7 +22,7 @@ def test_load_string(parse_source):
         </app>
 
         <script>
-        import kolla
+        import collagraph
         try:
             # Import Item will fail, but is needed
             # in order to 'register' it as a component
@@ -30,14 +30,14 @@ def test_load_string(parse_source):
         except:
             pass
 
-        class App(kolla.Component):
+        class App(collagraph.Component):
             pass
         </script>
         """,
         namespace=namespace,
     )
 
-    gui = Kolla(
+    gui = Collagraph(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )

@@ -5,7 +5,7 @@ import pytest
 from observ import scheduler
 from observ.proxy_db import proxy_db
 
-from kolla import sfc
+from collagraph import sfc
 
 
 def load(source, namespace=None):

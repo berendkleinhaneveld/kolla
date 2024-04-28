@@ -4,7 +4,7 @@ from typing import Any, Callable
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from kolla.types import EventLoopType
+from collagraph.types import EventLoopType
 from . import Renderer
 from .pyside.objects import (
     combobox,

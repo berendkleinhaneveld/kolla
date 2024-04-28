@@ -1,8 +1,8 @@
 import pytest
 from observ import reactive
 
-from kolla import EventLoopType, Kolla
-from kolla.renderers import DictRenderer
+from collagraph import EventLoopType, Collagraph
+from collagraph.renderers import DictRenderer
 
 
 def test_basic_dict_renderer(parse_source):
@@ -11,15 +11,15 @@ def test_basic_dict_renderer(parse_source):
         <app/>
 
         <script>
-        import kolla
+        import collagraph
 
-        class App(kolla.Component):
+        class App(collagraph.Component):
             pass
         </script>
         """
     )
 
-    gui = Kolla(
+    gui = Collagraph(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )
@@ -32,11 +32,11 @@ def test_basic_dict_renderer(parse_source):
 def test_renderer_required():
     # renderer argument is required
     with pytest.raises(TypeError):
-        Kolla(event_loop_type=EventLoopType.SYNC)
+        Collagraph(event_loop_type=EventLoopType.SYNC)
 
     # When the renderer argument is passed, it should be a Renderer subclass
     with pytest.raises(TypeError) as e:
-        Kolla(
+        Collagraph(
             renderer=True,
             event_loop_type=EventLoopType.SYNC,
         )
@@ -52,15 +52,15 @@ def test_reactive_element(parse_source):
         />
 
         <script>
-        import kolla
+        import collagraph
 
-        class App(kolla.Component):
+        class App(collagraph.Component):
             pass
         </script>
         """
     )
 
-    gui = Kolla(
+    gui = Collagraph(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )

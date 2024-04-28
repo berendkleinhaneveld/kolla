@@ -6,10 +6,10 @@
 </Node>
 
 <script lang="python">
-import kolla
+import collagraph
 from tests.data.slots.node import Node
 
 
-class Tree(kolla.Component):
+class Tree(collagraph.Component):
     pass
 </script>

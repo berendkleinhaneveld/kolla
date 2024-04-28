@@ -5,15 +5,15 @@
   :world.position="position"
   :world.scale="scale"
   @click="on_pressed"
-  @pointer_enter="lambda ev: self.hover(True)"
-  @pointer_leave="lambda ev: self.hover(False)"
 />
 
 <script>
+#  @pointer_enter="hover(True)"
+#  @pointer_leave="hover(False)"
 import pygfx as gfx
 from wgpu.gui.auto import call_later
 
-import kolla
+import collagraph
 
 
 geometry = gfx.box_geometry()
@@ -24,14 +24,16 @@ materials = {
 }
 
 
-class Button(kolla.Component):
+class Button(collagraph.Component):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.state["pressed"] = False
         self.state["hovered"] = False
         self.state["scale"] = self.props.get("scale", [0.85] * 3)
+        print('init!')
 
     def on_pressed(self, event):
+        print('pressed')
         def release():
             self.state["pressed"] = False
 
@@ -39,9 +41,11 @@ class Button(kolla.Component):
         call_later(2, release)
 
     def hover(self, hover):
+        print('hovered!')
         self.state["hovered"] = hover
 
     def material(self):
+        print('material')
         return (
             materials["pressed"]
             if self.state["pressed"]

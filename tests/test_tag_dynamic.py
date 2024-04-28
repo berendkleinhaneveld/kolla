@@ -1,8 +1,8 @@
 from observ import reactive
 
-from kolla import EventLoopType, Kolla
-from kolla.renderers import DictRenderer
-from kolla.renderers.dict_renderer import format_dict
+from collagraph import EventLoopType, Collagraph
+from collagraph.renderers import DictRenderer
+from collagraph.renderers.dict_renderer import format_dict
 
 
 def test_dynamic_component_tag(parse_source):
@@ -11,9 +11,9 @@ def test_dynamic_component_tag(parse_source):
         <component :is="foo" />
 
         <script>
-        import kolla
+        import collagraph
 
-        class App(kolla.Component):
+        class App(collagraph.Component):
             pass
         </script>
         """
@@ -21,7 +21,7 @@ def test_dynamic_component_tag(parse_source):
 
     state = reactive({"foo": "foo"})
     container = {"type": "root"}
-    gui = Kolla(
+    gui = Collagraph(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )
@@ -44,9 +44,9 @@ def test_dynamic_component_tag_anchor(parse_source):
         <last />
 
         <script>
-        import kolla
+        import collagraph
 
-        class App(kolla.Component):
+        class App(collagraph.Component):
             pass
         </script>
         """
@@ -54,7 +54,7 @@ def test_dynamic_component_tag_anchor(parse_source):
 
     state = reactive({"foo": "foo"})
     container = {"type": "root"}
-    gui = Kolla(
+    gui = Collagraph(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )

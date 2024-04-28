@@ -1,6 +1,6 @@
 <!--
   Run this example as follows:
-  poetry run kolla --renderer pygfx examples/pygfx/pygfx-component.cgx
+  poetry run collagraph --renderer pygfx examples/pygfx/pygfx-component.cgx
 -->
 <group>
 	<ambient-light />
@@ -13,13 +13,13 @@
 
 <script>
 import pygfx as gfx
-import kolla
+import collagraph
 
 
 sphere = gfx.sphere_geometry(radius=3)
 red = gfx.MeshPhongMaterial(color=(1, 0.2, 0.2))
 
 
-class Ball(kolla.Component):
+class Ball(collagraph.Component):
 	pass
 </script>

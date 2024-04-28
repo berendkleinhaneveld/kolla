@@ -1,7 +1,7 @@
 from observ import reactive
 
-from kolla import EventLoopType, Kolla
-from kolla.renderers import DictRenderer
+from collagraph import EventLoopType, Collagraph
+from collagraph.renderers import DictRenderer
 
 
 def test_component_tag(parse_source):
@@ -10,12 +10,12 @@ def test_component_tag(parse_source):
         <SubComponent />
 
         <script>
-        import kolla
+        import collagraph
 
 
-        class SubComponent(kolla.Component):
+        class SubComponent(collagraph.Component):
             def render(self, renderer):
-                from kolla.fragment import (
+                from collagraph.fragment import (
                     ControlFlowFragment,
                     ComponentFragment,
                     ListFragment,
@@ -27,7 +27,7 @@ def test_component_tag(parse_source):
                 return component
 
 
-        class App(kolla.Component):
+        class App(collagraph.Component):
             pass
         </script>
         """
@@ -35,7 +35,7 @@ def test_component_tag(parse_source):
 
     state = reactive({"foo": "foo"})
     container = {"type": "root"}
-    gui = Kolla(
+    gui = Collagraph(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )
@@ -56,8 +56,8 @@ def test_component_tag_props_and_events(parse_source):
         />
 
         <script>
-        import kolla
-        class SubComponent(kolla.Component):
+        import collagraph
+        class SubComponent(collagraph.Component):
             pass
         </script>
         """
@@ -77,14 +77,14 @@ def test_component_tag_props_and_events(parse_source):
         </el>
 
         <script>
-        import kolla
+        import collagraph
 
         try:
             import SubComponent
         except:
             pass
 
-        class App(kolla.Component):
+        class App(collagraph.Component):
             def __init__(self, *args, **kwargs):
                 super().__init__(*args, **kwargs)
                 self.state["action_count"] = 0
@@ -98,7 +98,7 @@ def test_component_tag_props_and_events(parse_source):
 
     state = reactive({"bar": "foo", "baz": "baz"})
     container = {"type": "root"}
-    gui = Kolla(
+    gui = Collagraph(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )

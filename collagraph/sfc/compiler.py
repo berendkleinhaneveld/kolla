@@ -4,9 +4,9 @@ from collections import defaultdict
 from os import environ
 from pathlib import Path
 
-from kolla import Component
+from collagraph import Component
 
-from .parser import KollaParser, Node
+from .parser import CGXParser, Node
 
 logger = logging.getLogger(__name__)
 
@@ -44,9 +44,9 @@ def load(path):
         </template
 
         <script>
-        import kolla
+        import collagraph
 
-        class Foo(kolla.Component):
+        class Foo(collagraph.Component):
             pass
         </script>
 
@@ -98,7 +98,7 @@ def construct_ast(path, template=None):
         template = Path(path).read_text()
 
     # Parse the file component into a tree of Node instances
-    parser = KollaParser()
+    parser = CGXParser()
     parser.feed(template)
 
     check_parsed_tree(parser.root)
@@ -131,7 +131,7 @@ def construct_ast(path, template=None):
 
     # Create render function as AST and inject into the ClassDef
     # render_tree = create_ast_render_function(
-    render_tree = create_kolla_render_function(
+    render_tree = create_collagraph_render_function(
         parser.root, names=imported_names.names | class_names
     )
     ast.fix_missing_locations(render_tree)
@@ -158,7 +158,7 @@ def construct_ast(path, template=None):
     return script_tree, component_def.name
 
 
-def get_script_ast(parser: KollaParser, path: Path) -> ast.Module:
+def get_script_ast(parser: CGXParser, path: Path) -> ast.Module:
     """
     Returns the AST created from the script tag in the .cgx file.
     """
@@ -391,7 +391,7 @@ def safe_tag(tag):
     return tag.replace("-", "_")
 
 
-def create_kolla_render_function(node: Node, names: set[str]) -> ast.FunctionDef:
+def create_collagraph_render_function(node: Node, names: set[str]) -> ast.FunctionDef:
     body: list[ast.stmt] = []
     body.append(
         ast.ImportFrom(
@@ -402,14 +402,14 @@ def create_kolla_render_function(node: Node, names: set[str]) -> ast.FunctionDef
     )
     body.append(
         ast.ImportFrom(
-            module="kolla",
+            module="collagraph",
             names=[ast.alias(name="Component")],
             level=0,
         )
     )
     body.append(
         ast.ImportFrom(
-            module="kolla.fragment",
+            module="collagraph.fragment",
             names=[
                 # TODO: import only the needed items
                 ast.alias(name="ControlFlowFragment"),

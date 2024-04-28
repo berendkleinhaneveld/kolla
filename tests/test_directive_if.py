@@ -1,7 +1,7 @@
 from observ import reactive
 
-from kolla import EventLoopType, Kolla
-from kolla.renderers import DictRenderer
+from collagraph import EventLoopType, Collagraph
+from collagraph.renderers import DictRenderer
 
 
 def test_directive_if_root(parse_source):
@@ -10,9 +10,9 @@ def test_directive_if_root(parse_source):
         <app v-if="foo" />
 
         <script>
-        import kolla
+        import collagraph
 
-        class App(kolla.Component):
+        class App(collagraph.Component):
             pass
         </script>
         """
@@ -20,7 +20,7 @@ def test_directive_if_root(parse_source):
 
     state = reactive({"foo": False})
     container = {"type": "root"}
-    gui = Kolla(
+    gui = Collagraph(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )
@@ -51,9 +51,9 @@ def test_directive_if_non_root(parse_source):
         </app>
 
         <script>
-        import kolla
+        import collagraph
 
-        class App(kolla.Component):
+        class App(collagraph.Component):
             pass
         </script>
         """
@@ -61,7 +61,7 @@ def test_directive_if_non_root(parse_source):
 
     state = reactive({"foo": False})
     container = {"type": "root"}
-    gui = Kolla(
+    gui = Collagraph(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )
@@ -94,9 +94,9 @@ def test_directive_if_with_children(parse_source):
         </app>
 
         <script>
-        import kolla
+        import collagraph
 
-        class App(kolla.Component):
+        class App(collagraph.Component):
             pass
         </script>
         """
@@ -104,7 +104,7 @@ def test_directive_if_with_children(parse_source):
 
     state = reactive({"foo": False})
     container = {"type": "root"}
-    gui = Kolla(
+    gui = Collagraph(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )
@@ -141,9 +141,9 @@ def test_directive_if_surrounded(parse_source):
         <after />
 
         <script>
-        import kolla
+        import collagraph
 
-        class App(kolla.Component):
+        class App(collagraph.Component):
             pass
         </script>
         """
@@ -151,7 +151,7 @@ def test_directive_if_surrounded(parse_source):
 
     state = reactive({"foo": False})
     container = {"type": "root"}
-    gui = Kolla(
+    gui = Collagraph(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )
@@ -190,9 +190,9 @@ def test_directive_if_nested_if(parse_source):
         </app>
 
         <script>
-        import kolla
+        import collagraph
 
-        class App(kolla.Component):
+        class App(collagraph.Component):
             pass
         </script>
         """
@@ -200,7 +200,7 @@ def test_directive_if_nested_if(parse_source):
 
     state = reactive({"foo": False, "bar": False})
     container = {"type": "root"}
-    gui = Kolla(
+    gui = Collagraph(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )
@@ -248,9 +248,9 @@ def test_directive_if_nested_for(parse_source):
         </app>
 
         <script>
-        import kolla
+        import collagraph
 
-        class App(kolla.Component):
+        class App(collagraph.Component):
             pass
         </script>
         """
@@ -258,7 +258,7 @@ def test_directive_if_nested_for(parse_source):
 
     state = reactive({"foo": True, "names": ["a", "b"]})
     container = {"type": "root"}
-    gui = Kolla(
+    gui = Collagraph(
         renderer=DictRenderer(),
         event_loop_type=EventLoopType.SYNC,
     )

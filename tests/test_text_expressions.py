@@ -1,8 +1,8 @@
 import pytest
 from observ import reactive
 
-from kolla import DictRenderer, EventLoopType, Kolla
-from kolla.renderers.dict_renderer import format_dict
+from collagraph import DictRenderer, EventLoopType, Collagraph
+from collagraph.renderers.dict_renderer import format_dict
 
 
 @pytest.mark.xfail
@@ -11,7 +11,7 @@ def test_text_elements():
 
     state = reactive({"content": "foo", "more": "bar"})
 
-    gui = Kolla(DictRenderer(), event_loop_type=EventLoopType.SYNC)
+    gui = Collagraph(DictRenderer(), event_loop_type=EventLoopType.SYNC)
     container = {"type": "container"}
     gui.render(Example, container, state)
 

@@ -3,12 +3,12 @@ from typing import Any
 
 from observ import scheduler
 
-from kolla.component import Component
-from kolla.renderers import Renderer
-from kolla.types import EventLoopType
+from collagraph.component import Component
+from collagraph.renderers import Renderer
+from collagraph.types import EventLoopType
 
 
-class Kolla:
+class Collagraph:
     def __init__(self, renderer: Renderer, *, event_loop_type: EventLoopType = None):
         if not isinstance(renderer, Renderer):
             raise TypeError(f"Expected a Renderer but got a {type(renderer)}")

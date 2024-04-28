@@ -8,7 +8,7 @@
 
 <script>
 import pygfx as gfx
-import kolla
+import collagraph
 
 sphere_geom = gfx.sphere_geometry(radius=0.5)
 materials = {
@@ -19,7 +19,7 @@ materials = {
 }
 
 
-class Point(kolla.Component):
+class Point(collagraph.Component):
     def set_selected(self, event):
         self.emit("selected", self.props["index"])
 

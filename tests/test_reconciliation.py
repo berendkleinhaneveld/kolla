@@ -3,8 +3,8 @@ from weakref import ref
 import pytest
 from observ import reactive
 
-from kolla import EventLoopType, Kolla
-from kolla.renderers import Renderer
+from collagraph import EventLoopType, Collagraph
+from collagraph.renderers import Renderer
 
 
 class CustomElement:
@@ -97,9 +97,9 @@ def test_reconcile_by_key(parse_source):
             </items>
 
             <script>
-            import kolla
+            import collagraph
 
-            class Items(kolla.Component):
+            class Items(collagraph.Component):
                 pass
             </script>
         """
@@ -107,7 +107,7 @@ def test_reconcile_by_key(parse_source):
     renderer = CustomElementRenderer()
 
     for before, after, name in states:
-        gui = Kolla(
+        gui = Collagraph(
             renderer=renderer,
             event_loop_type=EventLoopType.SYNC,
         )

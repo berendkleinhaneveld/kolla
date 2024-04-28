@@ -1,12 +1,12 @@
-from kolla import EventLoopType, Kolla
-from kolla.renderers import DictRenderer
-from kolla.renderers.dict_renderer import format_dict
+from collagraph import EventLoopType, Collagraph
+from collagraph.renderers import DictRenderer
+from collagraph.renderers.dict_renderer import format_dict
 
 
 def test_cgx_slots_named_fallback():
     from tests.data.slots.template_empty import Template
 
-    gui = Kolla(DictRenderer(), event_loop_type=EventLoopType.SYNC)
+    gui = Collagraph(DictRenderer(), event_loop_type=EventLoopType.SYNC)
     container = {"type": "root"}
     gui.render(Template, container)
 
@@ -32,7 +32,7 @@ def test_cgx_slots_named_fallback():
 def test_cgx_slots_named_filled():
     from tests.data.slots.template import Template
 
-    gui = Kolla(DictRenderer(), event_loop_type=EventLoopType.SYNC)
+    gui = Collagraph(DictRenderer(), event_loop_type=EventLoopType.SYNC)
     container = {"type": "root"}
     gui.render(Template, container)
 
@@ -60,7 +60,7 @@ def test_cgx_slots_named_filled():
 def test_cgx_slots_partial_no_fallback():
     from tests.data.slots.template_partial import Template
 
-    gui = Kolla(DictRenderer(), event_loop_type=EventLoopType.SYNC)
+    gui = Collagraph(DictRenderer(), event_loop_type=EventLoopType.SYNC)
     container = {"type": "root"}
     gui.render(Template, container)
 
@@ -84,7 +84,7 @@ def test_cgx_slots_partial_no_fallback():
 def test_cgx_slots_implicit_default_slot_name():
     from tests.data.slots.template_implicit_default_slot_name import Template
 
-    gui = Kolla(DictRenderer(), event_loop_type=EventLoopType.SYNC)
+    gui = Collagraph(DictRenderer(), event_loop_type=EventLoopType.SYNC)
     container = {"type": "root"}
     gui.render(Template, container)
 
@@ -111,7 +111,7 @@ def test_cgx_slots_implicit_default_slot_name():
 def test_cgx_slots_implicit_default_slot():
     from tests.data.slots.template_implicit_default_slot import Template
 
-    gui = Kolla(DictRenderer(), event_loop_type=EventLoopType.SYNC)
+    gui = Collagraph(DictRenderer(), event_loop_type=EventLoopType.SYNC)
     container = {"type": "root"}
     gui.render(Template, container)
 
@@ -138,7 +138,7 @@ def test_cgx_slots_implicit_default_slot():
 def test_cgx_slots_tree():
     from tests.data.slots.tree import Tree
 
-    gui = Kolla(DictRenderer(), event_loop_type=EventLoopType.SYNC)
+    gui = Collagraph(DictRenderer(), event_loop_type=EventLoopType.SYNC)
     container = {"type": "container"}
     gui.render(Tree, container)
 

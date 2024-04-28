@@ -26,7 +26,7 @@ class Node:
                 return child
 
 
-class KollaParser(HTMLParser):
+class CGXParser(HTMLParser):
     """Parser for .cgx files.
 
     Creates a tree of Nodes with all encountered attributes and data.

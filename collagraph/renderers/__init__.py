@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from typing import Any, Callable, Optional
 
-from kolla.types import EventLoopType
+from collagraph.types import EventLoopType
 
 
 class Renderer(metaclass=ABCMeta):  # pragma: no cover
@@ -13,7 +13,7 @@ class Renderer(metaclass=ABCMeta):  # pragma: no cover
 
     def register_asyncio(self) -> None:
         """
-        Called by kolla instance when registering the scheduler with
+        Called by Collagraph instance when registering the scheduler with
         asyncio so that the renderer can perform any additional setup.
         """
         pass

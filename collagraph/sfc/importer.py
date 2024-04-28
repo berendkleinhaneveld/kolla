@@ -5,14 +5,14 @@ from importlib.machinery import ModuleSpec
 from . import compiler
 
 
-class KollaImporter:
+class CGXImporter:
     def __init__(self, sfc_path):
-        """Store path to kolla file"""
+        """Store path to cgx file"""
         self.sfc_path = sfc_path
 
     @classmethod
     def find_spec(cls, name, path, target=None):
-        """Look for kolla files"""
+        """Look for cgx files"""
         if target is not None:
             # Target is set when module is being reloaded.
             # In our case we can just return the existing spec.
@@ -33,7 +33,7 @@ class KollaImporter:
         return
 
     def exec_module(self, module):
-        """Executing the module means reading the kolla file"""
+        """Executing the module means reading the cgx file"""
         component, context = compiler.load(self.sfc_path)
         # Add the default module keys to the context such that
         # __file__, __name__ and such are available to the loaded module
@@ -44,4 +44,4 @@ class KollaImporter:
 
 
 # Add the Cgx importer at the end of the list of finders
-sys.meta_path.append(KollaImporter)
+sys.meta_path.append(CGXImporter)

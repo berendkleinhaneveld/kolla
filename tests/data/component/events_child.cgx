@@ -5,9 +5,9 @@
 />
 
 <script>
-import kolla
+import collagraph
 
-class Child(kolla.Component):
+class Child(collagraph.Component):
     def simple_event(self):
         self.emit("bump")
 

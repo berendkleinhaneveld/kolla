@@ -1,10 +1,10 @@
-from kolla import DictRenderer, EventLoopType, Kolla
+from collagraph import DictRenderer, EventLoopType, Collagraph
 
 
 def test_component_provide_inject():
     from tests.data.component.provide_parent import Parent
 
-    gui = Kolla(DictRenderer(), event_loop_type=EventLoopType.SYNC)
+    gui = Collagraph(DictRenderer(), event_loop_type=EventLoopType.SYNC)
     container = {"type": "root"}
     gui.render(Parent, container)
 
@@ -18,7 +18,7 @@ def test_component_provide_inject():
 def test_component_provide_inject_deep():
     from tests.data.component.provide_root import Root
 
-    gui = Kolla(DictRenderer(), event_loop_type=EventLoopType.SYNC)
+    gui = Collagraph(DictRenderer(), event_loop_type=EventLoopType.SYNC)
     container = {"type": "root"}
     gui.render(Root, container)
 
