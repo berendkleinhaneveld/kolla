@@ -12,10 +12,10 @@ import collagraph
 
 sphere_geom = gfx.sphere_geometry(radius=0.5)
 materials = {
-    "default": gfx.MeshPhongMaterial(color=[1, 1, 1]),
-    "selected": gfx.MeshPhongMaterial(color=[1, 0, 0]),
-    "hovered": gfx.MeshPhongMaterial(color=[1, 0.6, 0]),
-    "other": gfx.MeshPhongMaterial(color=[1, 0, 0.5]),
+    "default": gfx.MeshPhongMaterial(color=[1, 1, 1], pick_write=True),
+    "selected": gfx.MeshPhongMaterial(color=[1, 0, 0], pick_write=True),
+    "hovered": gfx.MeshPhongMaterial(color=[1, 0.6, 0], pick_write=True),
+    "other": gfx.MeshPhongMaterial(color=[1, 0, 0.5], pick_write=True),
 }
 
 

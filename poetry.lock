@@ -1171,4 +1171,4 @@ pyside = ["pyside6"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9"
-content-hash = "27428f08650c5436299734897002d983f7fad7e28bc0539730e571d4e3bb394a"
+content-hash = "03d408637a6cb46d72ff3c4a39c0caca16ab1a9b19cc932f4596c5eec5edf269"
