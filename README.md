@@ -65,12 +65,12 @@ For more examples, please take a look at the [examples folder](examples).
 
 Currently there are four renderers:
 
-* [PysideRenderer](kolla/renderers/pyside_renderer.py): for rendering PySide6 applications
-* [PygfxRenderer](kolla/renderers/pygfx_renderer.py): for rendering 3D graphic scenes with [Pygfx](https://github.com/pygfx/pygfx)
-* [DomRenderer](kolla/renderers/dom_renderer.py): for rendering to HTML DOM with [PyScript](http://pyscript.net)
-* [DictRenderer](kolla/renderers/dict_renderer.py): for testing purposes
+* [PysideRenderer](collagraph/renderers/pyside_renderer.py): for rendering PySide6 applications
+* [PygfxRenderer](collagraph/renderers/pygfx_renderer.py): for rendering 3D graphic scenes with [Pygfx](https://github.com/pygfx/pygfx)
+* [DomRenderer](collagraph/renderers/dom_renderer.py): for rendering to HTML DOM with [PyScript](http://pyscript.net)
+* [DictRenderer](collagraph/renderers/dict_renderer.py): for testing purposes
 
-It is possible to create a custom `Renderer` using the [Renderer](kolla/renderers/__init__.py) interface, to render to other UI frameworks, for instance [wxPython](https://wxpython.org) and [GTK](https://pygobject.readthedocs.io/en/latest/) or any other dynamic tree-like structure that you can think of.
+It is possible to create a custom `Renderer` using the [Renderer](collagraph/renderers/__init__.py) interface, to render to other UI frameworks, for instance [wxPython](https://wxpython.org) and [GTK](https://pygobject.readthedocs.io/en/latest/) or any other dynamic tree-like structure that you can think of.
 
 
 ## Notable differences from Vue

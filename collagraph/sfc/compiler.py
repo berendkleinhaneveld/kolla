@@ -22,7 +22,7 @@ CONTROL_FLOW_DIRECTIVES = (DIRECTIVE_IF, DIRECTIVE_ELSE_IF, DIRECTIVE_ELSE)
 
 SUFFIX = "cgx"
 
-DEBUG = bool(environ.get("KOLLA_DEBUG", False))
+DEBUG = bool(environ.get("CGX_DEBUG", False))
 
 
 def load(path):
